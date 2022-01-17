@@ -1,0 +1,113 @@
+name: bbr2_debug
+
+# --------------------------------------------------
+common_parameters:
+  send_duration: 11.0 #s
+  truncate_front: 4.0 #s
+  truncate_back: 2.0 #s
+  plot_load_resolution: 0.01
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [10]
+  link_capacity: [100] # Mbps
+  switch_buffer: [1.0, 2.0] # expressed in BDP of link l
+  cc_combination:
+    #- ['CUBIC']
+    #- ['BBR2']
+    - ['CUBIC', 'BBR2']
+  link_latency: [10] # In ms
+  source_latency_range: 
+    - [5.0, 10.0]
+  qdisc:
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: True
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/simon/prog/pox/, /home/simonsch/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 1
+  delete_raw_dump: true
+
+# --------------------------------------------------
+plots: []
+
+trace_plots:
+
+  trace_cubic_smallbuf:
+    model_results: True
+    experiment_results: False
+    metrics: [w_0, s_0, wmax_0, q, p]
+    smoothed_metrics: [x_1]
+    paper_version: True
+    legend: True
+    legend_bottom: False
+    legend_keys:
+      y: y
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      cc_combination: BBR2/CUBIC
+      switch_buffer: 1.0
+      source_latency_range: [5.0, 10.0]
+
+  trace_cubic_largebuf:
+    model_results: True
+    experiment_results: False
+    metrics: [w_0, s_0, wmax_0, q, p]
+    smoothed_metrics: [x_1]
+    paper_version: True
+    legend: True
+    legend_bottom: False
+    legend_keys:
+      y: y
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      cc_combination: BBR2/CUBIC
+      switch_buffer: 2.0
+      source_latency_range: [5.0, 10.0]
+
+  trace_10:
+    model_results: True
+    experiment_results: False
+    metrics: [x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, q, p]
+    #metrics: [x_9, mifl_9, mup_9, v_9, wlo_9, whi_9, tstr_9, xbtl_9, xmax_9]
+    #metrics: [x_0, s_0, x_1, x_5, p, q]
+    #metrics: [x_0, x_5, y, q, p]
+    #metrics: [x_5, xbtl_5, w_5, v_5, mdwn_5, mcrs_5]
+    #metrics: [x_5, xbtl_5, w_5, v_5]
+    smoothed_metrics: []
+    paper_version: True
+    legend: True
+    legend_bottom: False
+    focus: True
+    legend_keys:
+      x_0: $x_0$
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      cc_combination: BBR2/CUBIC
+      switch_buffer: 2.0
+      source_latency_range: [5.0, 10.0]
+
+

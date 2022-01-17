@@ -1,0 +1,69 @@
+name: bbr_vs_reno
+
+# --------------------------------------------------
+common_parameters:
+  send_duration: 11.1 #s
+  truncate_front: 0.1 #s
+  truncate_back: 2 #s
+  plot_load_resolution: 0.01
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [2]
+  link_capacity: [100] # Mbps
+  switch_buffer: [0.5] # expressed in BDP of link l
+  cc_combination:
+    - ['RENO', 'BBR']
+  link_latency: [10] # In ms
+  source_latency_range: 
+    - [5.0, 10.0]
+  qdisc:
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: True
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/simon/prog/pox/, /home/simonsch/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 1
+
+# --------------------------------------------------
+plots: []
+
+trace_plots:
+
+  bbr_vs_reno_intro:
+    model_results: True
+    experiment_results: True
+    metrics: [w_0, x_1]
+    paper_version: True
+    legend: True
+    legend_bottom: True
+    legend_keys:
+      w_0: Reno rate
+      x_1: BBR rate
+      w_1: BBRwnd
+    other:
+      senders: 2
+      qdisc: Drop-tail
+      cc_combination: 'RENO/BBR'
+      switch_buffer: 0.5
+      source_latency_range: [5.0, 10.0]

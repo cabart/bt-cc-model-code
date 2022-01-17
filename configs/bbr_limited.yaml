@@ -1,0 +1,103 @@
+
+name: bbr_limited
+
+# --------------------------------------------------
+common_parameters:
+  send_duration: 6.1 #s
+  truncate_front: 0.1 #s
+  truncate_back: 0 #s
+  plot_load_resolution: 0.01
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [2]
+  link_capacity: [100] # Mbps
+  switch_buffer: [0.5, 10.0] # expressed in BDP of link l
+  cc_combination:
+    - ['RENO', 'BBR']
+  link_latency: [10] # In ms
+  source_latency_range: 
+    - [5.0, 10.0]
+  qdisc:
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: True
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/simon/prog/pox/, /home/simonsch/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 1
+
+# --------------------------------------------------
+plots: []
+
+trace_plots:
+
+  trace_shallow_buffer:
+    model_results: True
+    experiment_results: False
+    metrics: [x_1, x_0, w_1, max_inflight_1]
+    paper_version: True
+    legend: False
+    legend_keys:
+      x_1: BBR Rate
+      x_0: Reno Rate
+      max_inflight_1: Max Inflight
+    fig_width: 4
+    fig_height: 1.75
+    y_limit: 200
+    other:
+      senders: 2
+      qdisc: Drop-tail
+      cc_combination: RENO/BBR
+      link_latency: 10
+      switch_buffer: 0.5
+      source_latency_range: [5.0, 10.0]
+
+
+  trace_deep_buffer:
+    model_results: True
+    experiment_results: True
+    metrics: [x_1, x_0, w_1, max_inflight_1]
+    paper_version: True
+    legend: True
+    legend_bottom: False
+    legend_keys:
+      x_1: BBR Rate
+      w_1: BBR Inflight
+      x_0: Reno Rate
+      xdel_1: Del
+      xbtl_1: BtlBw
+      xmax_1: MaxBw
+      w_0: Reno Rate
+      q: Queue
+      y: Load
+      max_inflight_1: Max Inflight
+    fig_width: 5.5
+    fig_height: 1.75
+    y_limit: 200
+    other:
+      senders: 2
+      qdisc: Drop-tail
+      cc_combination: RENO/BBR
+      link_latency: 10
+      switch_buffer: 10
+      source_latency_range: [5.0, 10.0]

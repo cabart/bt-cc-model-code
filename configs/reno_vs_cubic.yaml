@@ -1,0 +1,95 @@
+name: reno_vs_cubic
+
+# --------------------------------------------------
+common_parameters:
+  send_duration:  80 #s
+  truncate_front: 10 #s
+  truncate_back:  0 #s
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [10]
+  link_capacity: [1000] # Mbps
+  switch_buffer: [1.0] # expressed in BDP of link l
+  cc_combination:
+    - ['RENO', 'CUBIC']
+  link_latency: [2.5, 7.5, 12.5] # In ms
+  source_latency_range: 
+    - [0, 5.0]
+  qdisc:
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: True
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/simon/prog/pox, /home/simonsch/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 3
+
+# --------------------------------------------------
+plots: []
+
+trace_plots:
+
+  trace_2.5:
+    model_results: True
+    experiment_results: False
+    metrics: [w_0, w_1, x_0, x_1]
+    paper_version: True
+    legend: False
+    legend_bottom: False
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      cc_combination: 'RENO/CUBIC'
+      switch_buffer: 1.0
+      link_latency: 2.5
+      source_latency_range: [0, 5.0]
+
+  trace_7.5:
+    model_results: True
+    experiment_results: False
+    metrics: [w_0, w_1, x_0, x_1]
+    paper_version: True
+    legend: False
+    legend_bottom: False
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      cc_combination: 'RENO/CUBIC'
+      switch_buffer: 1.0
+      link_latency: 7.5
+      source_latency_range: [0, 5.0]
+
+  trace_12.5:
+    model_results: True
+    experiment_results: False
+    metrics: [w_0, w_1, x_0, x_1]
+    paper_version: True
+    legend: False
+    legend_bottom: False
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      cc_combination: 'RENO/CUBIC'
+      switch_buffer: 1.0
+      link_latency: 12.5
+      source_latency_range: [0, 5.0]

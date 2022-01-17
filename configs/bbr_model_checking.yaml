@@ -1,0 +1,93 @@
+name: bbr_model_checking
+
+# --------------------------------------------------
+common_parameters:
+  send_duration: 12 #s
+  truncate_front: 4 #s
+  truncate_back: 2 #s
+  plot_load_resolution: 0.01
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [1]
+  link_capacity: [100] # Mbps
+  switch_buffer: [0.5] # expressed in BDP of link l
+  cc_combination:
+    - ['BBR']
+  link_latency: [10] # In ms
+  source_latency_range: 
+    - [5.0, 10.0]
+  qdisc:
+    - RED
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: True
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/simon/prog/pox/, /home/simonsch/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 1
+
+# --------------------------------------------------
+plots: []
+
+trace_plots:
+
+  trace_droptail:
+    model_results: True
+    experiment_results: True
+    metrics: [x_0, q, p, tau]
+    paper_version: True
+    legend: False
+    legend_bottom: False
+    legend_keys:
+      y: Rate
+      x_0: Rate
+      q: Queue
+      p: Loss
+      tau: Latency
+    other:
+      senders: 1
+      qdisc: Drop-tail
+      cc_combination: BBR
+      switch_buffer: 0.5
+      source_latency_range: [5.0, 10.0]
+
+  trace_RED:
+    model_results: True
+    experiment_results: True
+    metrics: [x_0, q, p, tau]
+    paper_version: True
+    legend: True
+    legend_bottom: False
+    legend_keys:
+      y: Rate
+      x_0: Rate
+      q: Queue
+      p: Loss
+      tau: Latency
+    other:
+      senders: 1
+      qdisc: RED
+      cc_combination: BBR
+      switch_buffer: 0.5
+      source_latency_range: [5.0, 10.0]
+

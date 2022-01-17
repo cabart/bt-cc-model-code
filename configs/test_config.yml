@@ -1,0 +1,65 @@
+name: test_config
+
+# --------------------------------------------------
+common_parameters:
+  send_duration: 11 #s
+  truncate_front: 5 #s
+  truncate_back: 2 #s
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [10]
+  link_capacity: [100] # Mbps
+  switch_buffer: [0.5] # expressed in BDP of link l
+  cc_combination:
+    - ['RENO']
+  link_latency: [1] # In ms
+  source_latency_range: 
+    - [1.375, 1.375]
+  qdisc:
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: False
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/cabart/bachelor-thesis/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 2
+
+# --------------------------------------------------
+
+emulab_parameters:
+  base_config: emulab_experiments/base_config.yaml
+  username: cabart
+
+# --------------------------------------------------
+plots:
+
+  B_queueing_CC_droptail:
+    model_results: True
+    experiment_results: True
+    x: switch_buffer
+    y: avg_queue
+    z: cc_combination
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      source_latency_range: [1.375, 1.375]

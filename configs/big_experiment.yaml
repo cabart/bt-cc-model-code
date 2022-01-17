@@ -1,0 +1,378 @@
+name: big_experiment
+
+# --------------------------------------------------
+common_parameters:
+  send_duration:  20 #s
+  truncate_front: 10 #s
+  truncate_back:  0 #s
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [2, 6, 10]
+  link_capacity: [1000] # Mbps
+  switch_buffer: [0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0] # expressed in BDP of link l
+  cc_combination:
+    - ['BBR']
+    - ['RENO', 'BBR']
+    - ['CUBIC', 'BBR']
+    - ['BBR2']
+    - ['RENO', 'BBR2']
+    - ['CUBIC', 'BBR2']
+    - ['BBR', 'BBR2']
+  link_latency: [2.5, 7.5, 12.5] # In ms
+  source_latency_range: 
+    - [0, 5.0]
+  qdisc:
+    - RED
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: True
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/simon/prog/pox, /home/simonsch/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 3
+
+# --------------------------------------------------
+plots:
+
+  B_fairness_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: switch_buffer
+    y: jain_fairness_index
+    z: cc_combination
+    other:
+      senders: 10
+      link_latency: 7.5
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  B_loss_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: switch_buffer
+    y: loss
+    z: cc_combination
+    other:
+      senders: 10
+      link_latency: 7.5
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  B_queueing_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: switch_buffer
+    y: avg_queue
+    z: cc_combination
+    other:
+      senders: 10
+      link_latency: 7.5
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  B_utilization_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: True
+    x: switch_buffer
+    y: utilization
+    z: cc_combination
+    other:
+      senders: 10
+      link_latency: 7.5
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  B_fairness_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: switch_buffer
+    y: jain_fairness_index
+    z: cc_combination
+    other:
+      senders: 10
+      link_latency: 7.5
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+  B_loss_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: switch_buffer
+    y: loss
+    z: cc_combination
+    other:
+      senders: 10
+      link_latency: 7.5
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+  B_queueing_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: switch_buffer
+    y: avg_queue
+    z: cc_combination
+    other:
+      senders: 10
+      link_latency: 7.5
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+  B_utilization_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: True
+    x: switch_buffer
+    y: utilization
+    z: cc_combination
+    other:
+      senders: 10
+      link_latency: 7.5
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+
+# -------------------------------------------
+
+  Lat_fairness_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: link_latency
+    y: jain_fairness_index
+    z: cc_combination
+    other:
+      senders: 10
+      switch_buffer: 1.0
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  Lat_loss_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: link_latency
+    y: loss
+    z: cc_combination
+    other:
+      senders: 10
+      switch_buffer: 1.0
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  Lat_queueing_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: link_latency
+    y: avg_queue
+    z: cc_combination
+    other:
+      senders: 10
+      switch_buffer: 1.0
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  Lat_utilization_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: True
+    x: link_latency
+    y: utilization
+    z: cc_combination
+    other:
+      senders: 10
+      switch_buffer: 1.0
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  Lat_fairness_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: link_latency
+    y: jain_fairness_index
+    z: cc_combination
+    other:
+      senders: 10
+      switch_buffer: 1.0
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+  Lat_loss_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: link_latency
+    y: loss
+    z: cc_combination
+    other:
+      senders: 10
+      switch_buffer: 1.0
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+  Lat_queueing_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: link_latency
+    y: avg_queue
+    z: cc_combination
+    other:
+      senders: 10
+      switch_buffer: 1.0
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+  Lat_utilization_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: True
+    x: link_latency
+    y: utilization
+    z: cc_combination
+    other:
+      senders: 10
+      switch_buffer: 1.0
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+
+# -------------------------------------------
+
+  
+  N_fairness_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: senders
+    y: jain_fairness_index
+    z: cc_combination
+    other:
+      link_latency: 7.5
+      switch_buffer: 1.0
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+  
+  N_loss_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: senders
+    y: loss
+    z: cc_combination
+    other:
+      link_latency: 7.5
+      switch_buffer: 1.0
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  N_queueing_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: senders
+    y: avg_queue
+    z: cc_combination
+    other:
+      link_latency: 7.5
+      switch_buffer: 1.0
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  N_utilization_cc_combination_droptail:
+    model_results: True
+    experiment_results: False
+    legend: True
+    x: senders
+    y: utilization
+    z: cc_combination
+    other:
+      switch_buffer: 1.0
+      link_latency: 7.5
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  N_fairness_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: senders
+    y: jain_fairness_index
+    z: cc_combination
+    other:
+      link_latency: 7.5
+      switch_buffer: 1.0
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+  N_loss_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: senders
+    y: loss
+    z: cc_combination
+    other:
+      link_latency: 7.5
+      switch_buffer: 1.0
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+  N_queueing_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: False
+    x: senders
+    y: avg_queue
+    z: cc_combination
+    other:
+      link_latency: 7.5
+      switch_buffer: 1.0
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+
+  N_utilization_cc_combination_RED:
+    model_results: True
+    experiment_results: False
+    legend: True
+    x: senders
+    y: utilization
+    z: cc_combination
+    other:
+      switch_buffer: 1.0
+      link_latency: 7.5
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+
+
