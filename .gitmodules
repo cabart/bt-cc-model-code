@@ -1,0 +1,3 @@
+[submodule "geni-lib"]
+	path = geni-lib
+	url = https://gitlab.flux.utah.edu/emulab/geni-lib.git

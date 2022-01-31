@@ -5,7 +5,6 @@ from geni.aggregate.user import User
 import geni.aggregate.protogeni as pg
 import geni.aggregate.instageni as IG
 
-
 import os
 
 # for testing
@@ -18,11 +17,15 @@ import pprint
 def buildContext(username="cabart",publicKeyPath="/.ssh/id_ed25519.pub",HOME="/home/cabart"):
     framework = FrameworkRegistry.get("portal")()
     framework.cert = HOME + "/.ssl/encrypted.pem"
-    framework.key = HOME + "/.ssl/password"
+    #framework.cert = HOME + "/.ssl/emucert.crt
+    #framework.key = HOME + "/.ssl/password"
+    framework.key = HOME + "/.ssl/dec.key"
+    framework.password = HOME + "/.ssl/password"
 
     user = User()
     user.name = username
     user.urn = "urn:publicid:IDN+emulab.net+user+" + username
+    #user.urn = "urn:publicid:IDN+ch.geni.net+user+" + username
     user.addKey(HOME + publicKeyPath)
 
     context = Context()
