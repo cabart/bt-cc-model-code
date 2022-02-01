@@ -21,6 +21,13 @@ datafolder = 'hostdata/'
 condenseddatafolder = 'condensed/'
 
 
+# get emulab configuration file
+def get_emulab_config(config_name):
+    
+    with open(config_name, 'r') as config_file:
+        config = yaml.safe_load(config_file)
+    return config
+
 # infer config settings into default config
 def config_edited_copy(default_config, custom):
     config = default_config.copy()
