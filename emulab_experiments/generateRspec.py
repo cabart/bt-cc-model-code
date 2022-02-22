@@ -25,7 +25,8 @@ def createUnboundRspec(config):
     pc = portal.Context()
 
     # Create a Request object to start building the RSpec.
-    request = pc.makeRequestRSpec()
+    #request = pc.makeRequestRSpec()
+    request = pg.Request()
 
     # physical type of all nodes
     # TODO: add this to experiment parameter

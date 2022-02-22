@@ -12,11 +12,15 @@ Click on any node in the topology and choose the `shell` menu item. When your sh
 import sys
 import yaml
 import os
+import pprint
+import time
 
-from emulab_experiments.generateRspec import *
-from emulab_experiments.generateConfig import *
-import emulab_experiments.protogeni as geni
+from generateRspec import *
+from generateConfig import *
+from serverCommunication import *
+from emulabConnection import *
 
+import geni.aggregate.protogeni as pg
 
 def main(config_name):
 
@@ -46,15 +50,51 @@ def main(config_name):
         exp_config = config_edited_copy(base_config, custom=pc_map)
         exp_config = setup_configuration(exp_config)
 
-        print(exp_config)
+        #print(exp_config)
         if first:
             first = False
             # do experiment
 
+            emulab_config = get_emulab_config("emulab_experiments/emulab_config.yaml")
+            emuServer = emulabConnection(emulab_config["username"],emulab_config["home"],emulab_config["certificate_location"],emulab_config["password_location"])
+
             # generate rspec file
             rspec = createUnboundRspec(exp_config)
-            print(rspec)
+            print(rspec.getDOM)
 
+            # do serverCommunication setup by building context        
+            #emulab_config = get_emulab_config("emulab_experiments/emulab_config.yaml")
+            #context = buildContext(emulab_config)
+
+            #from geni.util import loadContext
+            #context = loadContext()
+
+            sname = "test"
+            #ans = pg.UTAH_PG.listresources(context,sname=sname)
+            #ans = pg.UTAH_PG.listresources(context)
+            #pprint.pprint(ans)
+
+            #ans = pg.UTAH_PG.getversion(context)
+            #pprint.pprint(ans)
+
+            '''
+            # start sliver
+            sname = "emulab_experiment"
+            ans = pg.UTAH_PG.createsliver(context,sname,rspec)
+            pprint.pprint(ans)
+
+            for i in range(15):
+                time.sleep(60)
+                print("-"*30)
+                print("status report:")
+                ans = pg.UTAH_PG.sliverstatus(context,sname)
+                pprint.pprint(ans)
+
+            print("-"*30)
+            print("delete sliver")
+            ans = pg.UTAH_PG.deletesliver(context,sname)
+            pprint.pprint(ans)
+            print("deleted sliver")'''
         else:
             continue
 

@@ -1,4 +1,8 @@
+# deprecated, did not work due to openssl problems (urllib3/util/ssl_.py) and a bug in geni-lib (geni/aggregate/framworks.py)
+
+from tkinter import Frame
 from geni.aggregate import FrameworkRegistry
+from geni.aggregate.frameworks import CHAPI2, EmulabCH2
 from geni.aggregate.context import Context
 from geni.aggregate.user import User
 
@@ -40,19 +44,30 @@ def buildContext(emulab_config):
         # both files were already processed in an earlier run, no action necessary
         pass
 
-    framework = FrameworkRegistry.get("portal")()
+    #framework = FrameworkRegistry.get("portal")()
+    #framework = FrameworkRegistry.get("pg")()
+    framework = FrameworkRegistry.get("emulab-ch2")
+    FrameworkRegistry.register("emulab-ch2", EmulabCH2)
     framework.cert = certPath
+    #framework.cert = cert
     framework.key = keyPath
 
     user = User()
     user.name = username
     user.urn = "urn:publicid:IDN+emulab.net+user+" + username
+    user.userurn = "urn:publicid:IDN+emulab.net+user+" + username
     user.addKey(os.path.join(HOME, emulab_config["ssh_public_key_location"]))
 
     context = Context()
     context.addUser(user)
     context.cf = framework
     context.project = "cc-model-valid"
+
+    import datetime
+    slice_exp = datetime.datetime.now() + datetime.timedelta(days=5)
+    cf = CHAPI2()
+    sinfo = cf.createSlice(context=context,slicename="test",exp=slice_exp)
+    pprint.pprint(sinfo)
 
     return context
 
