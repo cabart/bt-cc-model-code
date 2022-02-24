@@ -30,4 +30,4 @@ The geni-lib package was installed in environment using the following command: '
 
 ## Documentation
 
-Documentation located at: [Documentation](https://github.com/cabart/bt-cc-model-code/documentation)
+Documentation located at: [Documentation](documentation/README.md)
