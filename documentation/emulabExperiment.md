@@ -2,32 +2,45 @@
 
 ## Prerequisites
 
-All code is tested on Ubuntu 20.04.
+All code was tested on Ubuntu 20.04.
 
-- Credentials for emulab authentication, password for emulab profile (should be in same folder, specified in experiment config file) (Maybe I'll add a option to enter the password at runtime, or make this a one time thing)
-- Geni-lib library (directly from github, will be included in my repository) (since there seems to be no consistency in geni-libs documentation and versioning I prefer having a static version of it for every user of my code)
-- SSH key for authentication on emulab server (public key must be added at emulab.net)
-- SSL config file and Environment variable (will all be included in repository) + running python with 'Sudo -E'
+All configuration changes need to be made in [config file](../emulab_experiments/emulab_config.yaml).
+
+- Credentials for Emulab authentication (Emulab login)
+  - Emulab password can be saved in a file and referenced to in config file, or be typed in at runtime during the experiment
+- SSH key for authentication on emulab server
+  - Public key must be added at emulab.net and be referenced to in config file (for ssh connection during experiment)
+
+Note: All paths in config file are relative pathes to 'home' path (also part of config file).
+
+~- SSL config file and Environment variable (will all be included in repository) + running python with 'Sudo -E'~ not used anymore
+
+## Dependencies
+
+- Geni-lib library (directly from github, will be included in my repository) (since there seems to be no consistency in geni-libs documentation and versioning I prefer having a static version of it for every user)
 
 List of all additional software requirements:
 
-- openssl
-- realpath (e.g. for testing of serverconnection)
+Currently none
 
-### Old Prerequisites
+~~- openssl~~
 
-- Installation of geni-lib ('pip install geni-lib' or 'python -m pip install geni-lib'). Currently the python3 library has python2 statements in it, so some lines of code of the portal.py file need to be changed in order to work. (NOTE: Since the pip version of geni-lib is not up-to-date I would not recommend using it)
-- Since code must be run as sudo, dependencies may not work. Use 'sudo /python/env/ ./run_emulab_experiment.py'
-- SSH key for authentication on emulab server
-- Credentials for emulab authentication, password (TODO: add more details)
+~~- realpath (e.g. for testing of serverconnection)~~
 
-## Pipeline
+not needed anymore
 
-1. run main script (./run_emulab_experiments.py)
+
+## Pipeline of ./run.sh (and ./run_emulab_experiments.py)
+
+1. run main script (./run_emulab_experiments.py) with some config
 2. Allocate resources on Emulab and startup hardware
-    -> need a way to get status of experiment and end of experiment
-3. Get data from experiment using scp
-    -> save all data in results/\<config-name\>/emulab_experiments
+    - Uses the emulabConnection file/class for handling resources and experiment status/setup/shutdown which in turn communicates with the emulab server using xmlrpc
+3. Wait for hardware setup to complete
+    - Setting up of virtual switch on a virtual machine might take up to ~10min
+4. Start experiment, using ssh connections to all remote hardware resources
+5. Get data from experiment using scp
+    - save all data in results/\<config-name\>/emulab_experiments
+6. Shutdown hardware (or repeat for multiple experiments)
 
 ## Parameters
 
@@ -57,18 +70,24 @@ List of all additional software requirements:
 Server Connection over emulab:
 
 > hrn:  utahemulab.\<project-name>.\<experiment-name>
-
+>
 > urn:  urn:publicid:IDN+emulab.net:\<project-name>+slice+\<experiment-name>
+>
+> ssh -p 22 \<user_name>@\<node-name>.\<experiment_name>.\<project_name>.emulab.net
 
 Server Connection using protogeni:
 
 > hrn:  utahemulab.\<slice-name>
-
+>
 > urn:  urn:publicid:IDN+emulab.net+slice+\<slice-name>
+>
+> ssh -p 22 \<user_name>@\<node-name>.\<sliver_name>.\<emulab-net>.emulab.net
 
-Should try using the base-urn 'urn:publicid:IDN+emulab.net:\<project-name>' to test if easier ssh naming is enabled ('cabart@node.\<project-name>.\<experiment-name>.emulab.net)
+For virtual machines: Use a specific port (given at runtime)
+
+
+~~Should try using the base-urn 'urn:publicid:IDN+emulab.net:\<project-name>' to test if easier ssh naming is enabled ('cabart@node.\<project-name>.\<experiment-name>.emulab.net)~~
 
 ## Problems
 
-- Openssl does not work with my certificate (maybe md5 problem), cannot change security level of openssl (why not?)
 - Certificates extension 'oid' does not work with newer versions of python cryptograpgy library, should investigate more and maybe ask emulab about it

@@ -31,3 +31,19 @@ The geni-lib package was installed in environment using the following command: '
 ## Documentation
 
 Documentation located at: [Documentation](documentation)
+
+## Running the experiment
+
+See [Emulab experiment documentation](documentation/emulabExperiment.md#prerequisites) before running it the first time
+
+> ./run.sh -v
+
+## Additional notes about the repository
+
+If python files are run by themselves they should be called like:
+
+> ./env/bin/python \<python file\>
+
+or depending on the file:
+
+> sudo ./env/bin/python \<python file\>
