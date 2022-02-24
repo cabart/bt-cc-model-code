@@ -1,23 +1,5 @@
 # Emulab Experiment
 
-## Notes about setup
-
-Clone the respository using:
-
-> git clone --recurse-submodules git@github.com:cabart/bt-cc-model-code.git
-
-or
-
-> git clone git@github.com:cabart/bt-cc-model-code.git
-> git submodule update --init --recursive
-
-Afterwards run the ./setupEnvironment.sh file to finish the setup. Test the setup by running the ./emulab_experiments/testConnectionSetup.sh script, which should retrieve a success message.
-
-- Use a python virtual environment located in 'env/'
-- Use geni-lib package located in 'geni-lib/'. This is a submodule and is directly cloned from https://gitlab.flux.utah.edu/emulab/geni-lib.git
-
-The geni-lib package was installed in environment using the following command: '$> env/bin/python -m pip install -e ./geni-lib/'
-
 ## Prerequisites
 
 All code is tested on Ubuntu 20.04.
