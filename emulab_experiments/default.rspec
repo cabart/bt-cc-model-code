@@ -2,4 +2,7 @@
   <node client_id="node1" exclusive="true">
     <sliver_type name="raw"/>
   </node>
+  <node client_id="node2" exclusive="false">
+    <sliver_type name="emulab-xen"/>
+  </node>
 </rspec>

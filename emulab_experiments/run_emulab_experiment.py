@@ -20,7 +20,8 @@ from generateConfig import *
 from serverCommunication import *
 from emulabConnection import *
 
-import geni.aggregate.protogeni as pg
+import logging
+logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
 
 def main(config_name):
 
@@ -56,11 +57,34 @@ def main(config_name):
             # do experiment
 
             emulab_config = get_emulab_config("emulab_experiments/emulab_config.yaml")
-            emuServer = emulabConnection(emulab_config["username"],emulab_config["home"],emulab_config["certificate_location"],emulab_config["password_location"])
+            try:
+                emuServer = emulabConnection(emulab_config["username"],emulab_config["home"],emulab_config["certificate_location"],emulab_config["password_location"])
+            except InitializeError as e:
+                print("Emulab initialization failed:", str(e))
+                print("Connection could not get established, abort...")
+                sys.exit(1)
+
+            print("Emulab server version:", emuServer.getVersion())
+            
 
             # generate rspec file
             rspec = createUnboundRspec(exp_config)
-            print(rspec.getDOM)
+
+            #if emuServer.startExperiment(duration=1, rspec=rspec):
+            if emuServer.startExperiment(duration=1):
+                print("Experiment is ready")
+            else:
+                print("Experiment is not ready, timeout maybe too low or there was an error when starting up")
+                sys.exit(1)
+            
+            print(emuServer.getAddresses())
+
+            # do experiment in between...
+            exp_duration = 1
+            print("Wait for " + str(exp_duration) + " minutes to shut down experiment")
+            time.sleep(exp_duration*60)
+
+            emuServer.stopExperiment()
 
             # do serverCommunication setup by building context        
             #emulab_config = get_emulab_config("emulab_experiments/emulab_config.yaml")

@@ -3,23 +3,27 @@
 
 # Note: has to be run with sudo permissions
 
+# More information about protogeni and especially the xmlrpc interface of it: http://www.protogeni.net/ProtoGeni/wiki/XMLRPCInterface
+
 # General notes for implementer:
 # after initialization only self.cred (user credentials) and self.sliceurn are known
 # self.slice and self.sliver have always to be checked for (if not null or even better if they have expired)
 
 # possible additions:
 # - binding more users to a single slice
+# - RenewSlice at sa (extend expiration date)
+# - Check version 2 compatibility, also on server side
+# - do_method and do_method_retry mix should be avoided
+# - should ask user what to do if sliver already exists: take it or create new? (if new maybe have to wait until it is ready)
 
 from getpass import getpass
-from re import I
 import sys
 import time
 import os
 import ssl
 
 # server connection libraries
-from urllib.parse import urlsplit, urlunsplit
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 import xmlrpc.client as xmlrpclib
 import http.client as httplib
 
@@ -29,10 +33,8 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.x509.oid import ExtensionOID
 
-# Todo: add logging
 import logging
-
-logging.basicConfig(format='%(levelname)s:: %(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
 
 
 class InitializeError(Exception):
@@ -55,6 +57,7 @@ class emulabConnection:
     def __init__(self, user, home_loc=None, certificate_loc='.ssl/cloudlab.pem', password_loc='.ssl/password', experiment_name="emulab-experiment"):
         logging.info("Start emulab connection setup")
 
+        # setup home path
         if home_loc is None:
             username = os.environ.get('SUDO_USER', os.environ.get('USERNAME'))
             self.HOME = os.path.expanduser(f'~{username}')
@@ -117,27 +120,26 @@ class emulabConnection:
         # get self credential, used for most calls at sa (slice authority)
         logging.debug("Getting credentials of user")
         cred = self.get_self_credential()
-        if cred == -1:
+        if cred is None:
             raise InitializeError("Could not get self credential when setting up emulab connection")
         else:
             self.cred = cred
 
         # get SSH keys
-        params = {}
-        params["credential"] = self.cred
+        params = {"credential": self.cred}
         rval, response = self.do_method_retry("sa", "GetKeys", params)
         if rval:
             raise InitializeError("Could not get ssh keys")
         else:
+            # TODO: maybe should check if there are any keys at all
             self.keys = response["value"]
-            print(self.keys)
 
         logging.info("Successfully setup emulab connection!\n")
 
 
     def do_method(self, module, method, params, version=None):
         if module not in self.xmlrpc_server or module not in self.server_path:
-            logging.error("Invalid call at: " + module + " in do_method call")
+            logging.error("Invalid call at: " + module + " in 'do_method' call")
             raise Exception("Invalid server module")
         else:
             addr = self.xmlrpc_server[module]
@@ -209,13 +211,15 @@ class emulabConnection:
         if rval:
             if response["value"]:
                 rval = response["value"]
+                logging.warning("Error code at server: " + str(response["value"]))
         return (rval, response)
     
 
     def do_method_retry(self, suffix, method, params):
-        count = 200
+        count = 20
         rval, response = self.do_method(suffix, method, params)
-        while count > 0 and response and response["code"] == 14:
+        # code 14 means busy, maybe should also do this for code 16 (in progress)
+        while count > 0 and response and response["code"] == 14: # code 14 means busy
             count -= 1
             logging.info("try again in a few seconds")
             time.sleep(5.0)
@@ -224,11 +228,10 @@ class emulabConnection:
 
 
     def get_self_credential(self):
-        params = {}
-        rval, response = self.do_method_retry("sa", "GetCredential", params)
+        rval, response = self.do_method_retry("sa", "GetCredential", {})
         if rval:
             logging.error("Could not get my credential")
-            return -1
+            return None
         else:
             return response["value"]
     
@@ -237,7 +240,7 @@ class emulabConnection:
         rval, response = self.do_method("sa", "GetVersion", {})
         if rval:
             logging.error("Could not obtain API version")
-            return -1
+            return None
         else:
             logging.debug("Server version:" + str(response["value"]))
             return response["value"]
@@ -251,11 +254,11 @@ class emulabConnection:
 
         rval, response = self.do_method_retry("sa", "Resolve", params)
         if rval:
-            logging.info("Slice does not exist yet or has expired")
+            logging.warn("Slice does not exist yet or has expired")
             return False
         else:
-            logging.info("Slice already exists")
-            logging.debug(str(response["value"]))
+            logging.debug("Slice already exists")
+            #logging.debug(str(response["value"]))
             return True
     
 
@@ -319,7 +322,9 @@ class emulabConnection:
         self.UpdateSliceInformation()
 
         if rspec is None:
-            path = './default.rspec'
+            logging.info("No specific rpsec given - using default rspec file")
+
+            path = os.path.join(os.path.dirname(__file__), 'default.rspec')
             try:
                 f = open(path)
                 rspec = f.read()
@@ -329,23 +334,25 @@ class emulabConnection:
                 logging.error("File path: ",path)
                 return False
 
+        logging.info("Starting sliver creation")
+
         params = {}
         params["credentials"] = (self.slice,)
         params["slice_urn"] = self.sliceurn
         params["rspec"] = rspec
         params["keys"] = self.keys
 
-        print("params:", params)
-
         rval, response = self.do_method("cm", "CreateSliver", params)
         if rval:
             logging.error("Could not create sliver")
             return False
         else:
-            logging.debug("Created sliver")
+            logging.info("Sliver successfully created")
             self.sliver, self.manifest = response["value"]
-            print("sliver:",self.sliver)
-            print("manifest:",self.manifest)
+            #print("sliver:",self.sliver,"\n\n\n")
+            #print("manifest:",self.manifest,"\n\n")
+            logging.info("Access nodes with: ssh -p 22 " + self.user + "@<node-name>." + self.experiment_name + ".emulab-net.emulab.net")
+            logging.info("This does only work for exclusive/hardware node, VMs have to be accessed using a specific port, see manifest")
             return True
 
 
@@ -362,8 +369,7 @@ class emulabConnection:
                 logging.error("no sliver found in this slice")
                 return False
             else:
-                logging.info("Sliver found:")
-                print(response["value"]["sliver_urn"])
+                logging.debug("Sliver found" + str(response["value"]["sliver_urn"]))
                 self.sliverurn = response["value"]["sliver_urn"]
                 return True
 
@@ -408,7 +414,68 @@ class emulabConnection:
             self.ticket = response["value"]
             return True
 
+
+    def sliverStatus(self):
+        self.UpdateSliverInformation()
+
+        params = {}
+        params["slice_urn"] = self.sliceurn
+        params["credentials"] = (self.sliver,)
+
+        rval, response = self.do_method("cm", "SliverStatus", params, version="2.0")
+        if rval:
+            logging.error("Could not get sliver status")
+            return None
+        else:
+            return response["value"]
         
+
+    def sliverWaitUntilReady(self, retries=50, interval=30):
+        self.UpdateSliverInformation()
+
+        ready = False
+        count = 0
+        logging.info("Waiting for hardware to start up... (large network setups may take a few minutes to get started up)")
+        while not ready or count >= retries:
+            count += 1
+            status = self.sliverStatus()
+            if status is None:
+                logging.info("Sliver status unknown")
+            else:
+                #logging.debug(str(status))
+                logging.debug("Current status of sliver:" + status["status"])
+                if status["status"] == 'ready':
+                    ready = True
+                    break
+            logging.info("Tried for " + str(count) + "/" + str(retries) + " times. Will try again in " + str(interval) + " seconds.")
+            time.sleep(interval)
+
+        return ready
+
+        
+    def startExperiment(self, duration=4, rspec=None):
+        self.createSlice(duration)
+        self.createSliver(rspec)
+
+        if self.sliverWaitUntilReady():
+            logging.debug("Experiment is ready")
+            return True
+        else:
+            logging.debug("Experiment is not ready, timeout maybe too low or there was an error when starting up")
+            return False
+
+
+    def stopExperiment(self):
+        return self.deleteSliver()
+
+
+    def getAddresses(self):
+        if self.manifest is None:
+            logging.info("No sliver seems to exist")
+            return None
+        else:
+            #logging.info("Manifest:" + str(self.manifest)) 
+            return self.manifest
 
 
 if __name__ == "__main__":
@@ -428,7 +495,7 @@ if __name__ == "__main__":
 
     #logging.info("Test for credentials")
     #cred = emuConn.get_self_credential() 
-    #if cred == -1:
+    #if cred is None:
     #    logging.error("Could not get my credential")
     #else:
     #    logging.info("Did get credentials")
@@ -448,9 +515,18 @@ if __name__ == "__main__":
     else:
         logging.info("Could not create sliver")
 
-    # TODO: replace this with status requesting until sliver ready
-    # wait for it to setup
-    time.sleep(120)
+
+    logging.info("Wait for experiment to get ready")
+    
+    ready = emuConn.sliverWaitUntilReady()
+    if ready:
+        logging.info("experiment is now ready")
+    else:
+        logging.error("Sliver still not ready, maybe broken: abort")
+
+    
+
+    time.sleep(60)
 
     logging.info("Test for sliver deletion")
     worked = emuConn.deleteSliver()

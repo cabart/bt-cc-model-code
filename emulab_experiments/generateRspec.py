@@ -16,6 +16,8 @@ repoURL = "https://github.com/cabart/bt-cc-model-code/archive/main.tar.gz"
 repoPath = "/local"
 
 def createUnboundRspec(config):
+    """ Returns unbound rspec file as string """
+
     sendDuration = config['send_duration']
     numSender = config['inferred']['num_senders']
     linkCapacity = config['link_capacity'] * 1000   # in kilobytes
@@ -101,4 +103,4 @@ def createUnboundRspec(config):
     
     # Print the RSpec to the enclosing page.
     #pc.printRequestRSpec(request)
-    return request
+    return request.toXMLString(pretty_print=True, ucode=True)
