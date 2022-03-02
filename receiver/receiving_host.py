@@ -29,12 +29,13 @@ def getInterface():
 
 
 def startTcpDump():
+    global INTERFACE
     # > '+RESULT_FILE_PREFIX+'hostdata/hDest-eth'+str(i)+'.log
     for i in range(1):
         #with open(RESULT_FILE_PREFIX+'hostdata/hDest-eth'+str(i)+'.log', 'w+') as f:
-        #    tcpDumpCommmand = ('tcpdump -tt -i hDest-eth'+str(i)+' -e -v -n -S -x -s 96').split()
-            #subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)
-            # TODO: add correct interface
+        with open('/local/results/receiverIface.log', 'w+') as f:
+            tcpDumpCommmand = ('tcpdump -tt -i ' + INTERFACE + ' -e -v -n -S -x -s 96').split()
+            subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)
             logging.info("Started tcpdump.")
 
 
@@ -126,5 +127,9 @@ if __name__ == "__main__":
     f = open("/local/config.yaml", "r")
     config = yaml.safe_load(f)
     f.close()
+
+    # create result folders on node
+    if not os.path.exists("/local/results"):
+        os.makedirs("/local/results")
 
     main(config)

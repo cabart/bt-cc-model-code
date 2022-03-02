@@ -51,19 +51,21 @@ def startTcpDump(hostID):
 
 
 def setTSO(hostID, on_mode):
+    global INTERFACE
     mode = "on" if on_mode else "off"
     for ifID in range(NPATHS):
-        turnoffTSOCommand = ("ethtool -K %s-eth%d tso %s" % (hostID, ifID, mode)).split()
-        # TODO: change this interface name
-        #output = str(subprocess.check_output(turnoffTSOCommand))
+        turnoffTSOCommand = ("ethtool -K %s tso %s" % (INTERFACE, mode)).split()
+        output = str(subprocess.check_output(turnoffTSOCommand))
+        logging.info("set TSO output:" + str(output))
     logging.info("TSO turned " + str(mode))
 
 # TODO: change this
 def announceYourself(hostID, desthostID):
+    global INTERFACE
     for ifID in range(NPATHS):
-        #logging.info("Announce %s-eth%d" % (hostID,ifID))
-        #pingCommand = ("ping -c 3 -I %s-eth%d 10.0.%d.%d" % (hostID, ifID, ifID, desthostID)).split()
-        #subprocess.call(pingCommand)
+        logging.info("Announce %s" % (INTERFACE))
+        pingCommand = ("ping -c 3 -I %s 10.0.%d.%d" % (INTERFACE, ifID, desthostID)).split()
+        subprocess.call(pingCommand)
         continue
 
 # This will always be executed; regardless of 'protocol' config.
@@ -183,6 +185,10 @@ if __name__ == "__main__":
     f = open("/local/config.yaml", "r")
     config = yaml.safe_load(f)
     f.close()
+
+    # create result folders on node
+    if not os.path.exists("/local/results/senderlogs"):
+        os.makedirs("/local/results/senderlogs")
 
     behavior_index = 0
     try:
