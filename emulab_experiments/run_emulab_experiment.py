@@ -164,7 +164,7 @@ def main(config_name):
             time.sleep(1)
             # TODO: start sending hosts measurements
             for k,v in senderSSH.items():
-                v.sendline("python /local/bt-cc-model-code-main/sender/sending_host.sh")
+                v.sendline("bash /local/bt-cc-model-code-main/sender/sending_host.sh")
             
             # receive answers
             for k,v in senderSSH.items():
