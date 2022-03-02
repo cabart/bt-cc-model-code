@@ -130,7 +130,6 @@ ssh -p 22 \<user_name>@\<node-name>.\<sliver_name>.emulab-net.emulab.net
 
 For virtual machines: Use a specific port (given at runtime)
 
-
 ~~Should try using the base-urn 'urn:publicid:IDN+emulab.net:\<project-name>' to test if easier ssh naming is enabled ('cabart@node.\<project-name>.\<experiment-name>.emulab.net)~~
 
 ## Problems

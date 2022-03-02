@@ -31,7 +31,7 @@ else
 fi
 
 if [ $? -eq 0 ]; then
-    echo "Success: Connection to server did work!"
+    echo "Success: Experiment ended successfully"
 else
-    echo "Fail: Connection to server not possible"
+    echo "Fail: Experiment failed"
 fi

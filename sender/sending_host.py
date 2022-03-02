@@ -40,14 +40,12 @@ def getInterface():
     return result
 
 
-# TODO: change interface to correct one
 def startTcpDump(hostID):
-    return
-    for i in range(1):
-        with open(config['result_dir']+'hostdata/'+str(hostID)+'-eth'+str(i)+'.log', 'w+') as f:
-            tcpDumpCommmand = ('tcpdump -tt -i '+str(hostID)+'-eth'+str(i)+' -n -e -v -S -x -s 96').split()
-            subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)
-            logging.info("Started tcpdump.")
+    global INTERFACE
+    with open('/local/results/hostdata/tcpsender' + hostID + '.log', 'w+') as f:
+        tcpDumpCommmand = ('tcpdump -tt -i '+ INTERFACE +' -n -e -v -S -x -s 96').split()
+        subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)
+        logging.info("Started tcpdump.")
 
 
 def setTSO(hostID, on_mode):
@@ -148,7 +146,7 @@ def run(behavior_index, desthostID, config):
     currPath = '0'
 
     #iperfoutputfile = (config['result_dir'] + "hostlogs/" + config['iperf_outfile_client']).replace("$", str(IPNum))
-    iperfoutputfile = ("results/senderlogs/" + config['iperf_outfile_client']).replace("$", str(IPNum))
+    iperfoutputfile = ("/local/results/senderlogs/" + config['iperf_outfile_client']).replace("$", str(IPNum))
     fout = open(iperfoutputfile, 'w')
 
     time.sleep(2)
@@ -189,6 +187,8 @@ if __name__ == "__main__":
     # create result folders on node
     if not os.path.exists("/local/results/senderlogs"):
         os.makedirs("/local/results/senderlogs")
+    if not os.path.exists("/local/results/hostdata"):
+        os.makedirs("/local/results/hostdata")
 
     behavior_index = 0
     try:
