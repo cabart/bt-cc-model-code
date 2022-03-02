@@ -8,7 +8,7 @@ common_parameters:
 
 # --------------------------------------------------
 varying_parameters:
-  senders: [10]
+  senders: [2]
   link_capacity: [100] # Mbps
   switch_buffer: [0.5] # expressed in BDP of link l
   cc_combination:

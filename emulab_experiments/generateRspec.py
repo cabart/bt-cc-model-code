@@ -61,7 +61,8 @@ def createUnboundRspec(config):
     startupSender = "/local/bt-cc-model-code-main/sender/sender_startup.sh"
 
     rcviface = mysw.addInterface("eth2")
-    rcviface.addAddress(pg.IPv4Address("192.168.1.1","255.255.255.0"))
+    #rcviface.addAddress(pg.IPv4Address("192.168.1.1","255.255.255.0"))
+    rcviface.addAddress(pg.IPv4Address("10.0.0.1","255.255.255.0"))
 
     # set physical type of virtual switch
     if phystype != "":
@@ -81,9 +82,10 @@ def createUnboundRspec(config):
         node.addService(pg.Execute(shell="bash", command=startupSender))
         
         iface = node.addInterface("eth1")
-        iface.addAddress(pg.IPv4Address("192.168.1." + str(i+3),"255.255.255.0"))
+        #iface.addAddress(pg.IPv4Address("192.168.1." + str(i+3),"255.255.255.0"))
+        iface.addAddress(pg.IPv4Address("10.0.0." + str(i+3),"255.255.255.0"))
         sendiface = mysw.addInterface()
-        sendiface.addAddress(pg.IPv4Address("192.168.1." + str(numSender+3+i),"255.255.255.0"))
+        sendiface.addAddress(pg.IPv4Address("10.0.0." + str(numSender+3+i),"255.255.255.0"))
         link = request.Link("sendLink-" + str(i),members=[iface,sendiface])
         link.bandwidth = linkCapacity
         
@@ -97,7 +99,8 @@ def createUnboundRspec(config):
         rcvNode.hardware_type = phystype
 
     iface = rcvNode.addInterface("eth2")
-    iface.addAddress(pg.IPv4Address("192.168.1.2","255.255.255.0"))
+    #iface.addAddress(pg.IPv4Address("192.168.1.2","255.255.255.0"))
+    iface.addAddress(pg.IPv4Address("10.0.0.2","255.255.255.0"))
     link = request.Link("rcvLink", members=[rcviface,iface])
     link.bandwidth = linkCapacity
     

@@ -5,3 +5,4 @@ home: /home/cabart
 certificate_location: .ssl/certificate.pem
 password_location: .ssl/password # if no password file is given, you have to submit it at runtime in terminal
 ssh_public_key_location: .ssh/id_ed25519.pub
+ssh_key_location: .ssh/id_ed25519

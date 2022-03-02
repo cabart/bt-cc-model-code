@@ -6,16 +6,22 @@ Code for emulab experiments for congestion control algorithms.
 
 Clone the respository using:
 
-> git clone --recurse-submodules git@github.com:cabart/bt-cc-model-code.git
+~~~bash
+git clone --recurse-submodules git@github.com:cabart/bt-cc-model-code.git
+~~~
 
 or
 
-> git clone git@github.com:cabart/bt-cc-model-code.git
-> git submodule update --init --recursive
+~~~bash
+git clone git@github.com:cabart/bt-cc-model-code.git
+git submodule update --init --recursive
+~~~
 
 Afterwards run:
 
-> ./setupEnvironment.sh
+~~~bash
+./setupEnvironment.sh
+~~~
 
 to finish the setup.
 
@@ -36,14 +42,20 @@ Documentation located at: [Documentation](documentation)
 
 See [Emulab experiment documentation](documentation/emulabExperiment.md#prerequisites) before running it the first time
 
-> ./run.sh -v
+~~~bash
+./run.sh -v
+~~~
 
 ## Additional notes about the repository
 
 If python files are run by themselves they should be called like:
 
-> ./env/bin/python \<python file\>
+~~~bash
+./env/bin/python \<python file\>
+~~~
 
 or depending on the file:
 
-> sudo ./env/bin/python \<python file\>
+~~~bash
+sudo ./env/bin/python \<python file\>
+~~~

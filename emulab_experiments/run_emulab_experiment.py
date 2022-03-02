@@ -17,6 +17,7 @@ import pprint
 import time
 
 from pexpect import pxssh
+import subprocess
 
 from generateRspec import *
 from generateConfig import *
@@ -24,12 +25,11 @@ from serverCommunication import *
 from emulabConnection import *
 
 import logging
-logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.DEBUG)
-
-
+logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
 
 
 def main(config_name):
+    logging.debug("Setting up configuration")
 
     config = get_config(config_name)
 
@@ -50,7 +50,7 @@ def main(config_name):
         base_config = yaml.safe_load(base_config_file)
 
     # for now, only run one parameter combination
-    print("Number of combinations:",len(config['param_combinations']))
+    logging.info("Number of combinations: " + str(len(config['param_combinations'])))
     first = True
     for pc_map in config['param_combinations']:
         # create configuration file for experiment
@@ -58,6 +58,7 @@ def main(config_name):
         exp_config = setup_configuration(exp_config)
 
         #print(exp_config)
+        # Do a single run of a single configuration
         if first:
             first = False
             # do experiment
@@ -67,54 +68,43 @@ def main(config_name):
             try:
                 emuServer = emulabConnection(emulab_config["username"],emulab_config["home"],emulab_config["certificate_location"],emulab_config["password_location"],experiment_name=experiment_name)
             except InitializeError as e:
-                print("Emulab initialization failed:", str(e))
-                print("Connection could not get established, abort...")
+                logging.error("Emulab initialization failed: " + str(e))
+                logging.error("Connection could not get established, abort...")
                 sys.exit(1)
 
-            print("Emulab server version:", emuServer.getVersion())
-            
+            logging.debug("Emulab server version:" + str(emuServer.getVersion()))
 
             # generate rspec file
             rspec = createUnboundRspec(exp_config)
 
             #if emuServer.startExperiment(duration=1, rspec=rspec):
             if emuServer.startExperiment(duration=1, rspec=rspec):
-                print("Experiment is ready")
+                logging.info("Experiment is ready\n")
             else:
-                print("Experiment is not ready, timeout maybe too low or there was an error when starting up")
+                logging.info("Experiment is not ready, timeout maybe too low or there was an error when starting up")
                 sys.exit(1)
             
-            #vmPort = emuServer.getVMPorts()
-
             # Connect to all experiment nodes (sender, switch, receiver)
             connectAll = True
-            sshPubKey = os.path.join(emulab_config["home"],emulab_config["ssh_key_location"])
+            sshKey = os.path.join(emulab_config["home"],emulab_config["ssh_key_location"])
             numSender = exp_config['inferred']['num_senders']
 
             def connectSSH(nodename, port="22"):
                 node = nodename + "." + experiment_name + ".emulab-net.emulab.net"
                 s = pxssh.pxssh(options={"StrictHostKeyChecking": "no"},timeout=30)
-                s.login(node,emulab_config["username"],port=port,ssh_key=sshPubKey,sync_multiplier=2)
+                s.login(node,emulab_config["username"],port=port,ssh_key=sshKey,sync_multiplier=2)
                 return s
             
-            senderSSH = []
+            senderSSH = dict()
             for i in range(numSender):
                 try:
-                    s = connectSSH("sender" + str(i))
-                    senderSSH.append(s)
-                    #node = "sender" + str(i) + "." + experiment_name + ".emulab-net.emulab.net"
-                    #s = pxssh.pxssh(options={"StrictHostKeyChecking": "no"},timeout=30)
-                    #s.login(node,emulab_config["username"],port="22",ssh_key=sshPubKey,sync_multiplier=2)
-                    #senderSSH.append(s)
+                    sender = "sender" + str(i)
+                    s = connectSSH(sender)
+                    senderSSH.update({sender: s})
                 except pxssh.ExceptionPxssh as e:
                     connectAll = False
                     logging.error("Login to node failed: sender" + str(i))
                     logging.error(e)
-            
-            if len(senderSSH) == numSender:
-                logging.info("all sender logins worked")
-            else:
-                logging.error("some sender login connections failed")
 
             # connect to receiver
             try:
@@ -130,6 +120,18 @@ def main(config_name):
                 connectAll = False
                 logging.error("Login to switch node failed: " + e)
 
+            # create a dictionary for all nodes
+            allSSH = senderSSH.copy()
+            allSSH.update({"receiver": recSSH, "switch": switchSSH})
+            logging.debug("all ssh connections: " + str(allSSH))
+
+            # all addresses for scp use
+            allAddresses = dict()
+            for k in allSSH.keys():
+                address = emulab_config["username"] + "@" + k + "." + experiment_name + ".emulab-net.emulab.net"
+                allAddresses.update({k:address})
+            logging.debug("All addresses: " + str(allAddresses))
+
             # check all connections
             def uptimeCheckSSH(s:pxssh.pxssh):
                 s.sendline("uptime")
@@ -139,27 +141,46 @@ def main(config_name):
             # Check if all connections worked and start experiment
             if connectAll:
                 # do experiment
-                for i in range(numSender):
-                    logging.debug("Test sender" + str(i) + " uptime:" + uptimeCheckSSH(senderSSH[i]))    
-                logging.debug("Test switch uptime:" + uptimeCheckSSH(switchSSH))
-                logging.debug("Test receiver uptime: " + uptimeCheckSSH(recSSH))
-
+                for k,v in allSSH.items():
+                    logging.debug("Test " + k + " uptime: " + uptimeCheckSSH(v))
             else:
-                logging.error("Some connections did not work!")
+                logging.error("Some ssh connections did not work!")
 
-            # send config file to all sender and receiver
-            for i in range(numSender):
+            # send config file to all nodes
+            file = os.path.join(os.getcwd(),exp_config["result_dir"])
+            file = os.path.join(file,"config.yaml")
+            for k,v in allAddresses.items():
+                retCode = subprocess.call(["scp","-P","22","-i",sshKey,file,v+":/local/config.yaml"])
+                if retCode:
+                    logging.error("Uploading of config file to " + k + " did not work")
+                    sys.exit(1)
+            logging.info("Experiment config successfully uploaded to every experiment node")
+            
+            # TODO: Start switch measurements
+            
+            # TODO: start receiving host measurements
+            recSSH.sendline("python /local/bt-cc-model-code-main/receiver/receiving_host.py")
+            
+            time.sleep(1)
+            # TODO: start sending hosts measurements
+            for k,v in senderSSH.items():
+                v.sendline("python /local/bt-cc-model-code-main/sender/sending_host.py")
+            
+            # receive answers
+            for k,v in senderSSH.items():
+                v.prompt()
+                logging.info("started sender" + k + ": " + str(v.before.decode("utf-8")))
 
+            recSSH.prompt()
+            logging.info("started receiver: " + str(recSSH.before.decode("utf-8")))
 
             # logout from all ssh connections
-            for i in range(numSender):
-                senderSSH[i].logout()
-            recSSH.logout()
-            switchSSH.logout()
+            for k,v in allSSH.items():
+                v.logout()
 
             # do experiment in between...
-            exp_duration = 2
-            print("Wait for " + str(exp_duration) + " minutes to shut down experiment")
+            exp_duration = 30
+            logging.info("Wait for " + str(exp_duration) + " minutes to shut down experiment")
             time.sleep(exp_duration*60)
 
             emuServer.stopExperiment()
@@ -180,4 +201,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         main(sys.argv[1])
     else:
-        print("Please provide a multi-experiment config file.")
+        logging.error("Please provide a multi-experiment config file.")

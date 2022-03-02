@@ -21,6 +21,7 @@ import sys
 import time
 import os
 import ssl
+import re
 
 # server connection libraries
 from urllib.parse import urlsplit
@@ -34,7 +35,6 @@ from cryptography.x509.oid import NameOID
 from cryptography.x509.oid import ExtensionOID
 
 import logging
-logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
 
 
 class InitializeError(Exception):
@@ -215,15 +215,15 @@ class emulabConnection:
         return (rval, response)
     
 
-    def do_method_retry(self, suffix, method, params):
+    def do_method_retry(self, suffix, method, params, version=None):
         count = 20
-        rval, response = self.do_method(suffix, method, params)
+        rval, response = self.do_method(suffix, method, params, version)
         # code 14 means busy, maybe should also do this for code 16 (in progress)
         while count > 0 and response and response["code"] == 14: # code 14 means busy
             count -= 1
             logging.info("try again in a few seconds")
             time.sleep(5.0)
-            rval, response = self.do_method(suffix, method, params)
+            rval, response = self.do_method(suffix, method, params, version)
         return (rval, response)
 
 
@@ -237,7 +237,7 @@ class emulabConnection:
     
 
     def getVersion(self):
-        rval, response = self.do_method("sa", "GetVersion", {})
+        rval, response = self.do_method_retry("sa", "GetVersion", {})
         if rval:
             logging.error("Could not obtain API version")
             return None
@@ -342,7 +342,7 @@ class emulabConnection:
         params["rspec"] = rspec
         params["keys"] = self.keys
 
-        rval, response = self.do_method("cm", "CreateSliver", params)
+        rval, response = self.do_method_retry("cm", "CreateSliver", params)
         if rval:
             logging.error("Could not create sliver")
             return False
@@ -350,7 +350,7 @@ class emulabConnection:
             logging.info("Sliver successfully created")
             self.sliver, self.manifest = response["value"]
             #print("sliver:",self.sliver,"\n\n\n")
-            #print("manifest:",self.manifest,"\n\n")
+            print("manifest:",self.manifest,"\n\n")
             logging.info("Access nodes with: ssh -p 22 " + self.user + "@<node-name>." + self.experiment_name + ".emulab-net.emulab.net")
             logging.info("This does only work for exclusive/hardware node, VMs have to be accessed using a specific port, see manifest")
             return True
@@ -360,7 +360,7 @@ class emulabConnection:
         params = {}
         params["credentials"] = (self.slice,)
         params["urn"] = self.sliceurn
-        rval, response = self.do_method("cm", "Resolve", params, version="2.0")
+        rval, response = self.do_method_retry("cm", "Resolve", params, version="2.0")
         if rval:
             logging.error("Could not resolve slice")
             return False
@@ -370,7 +370,9 @@ class emulabConnection:
                 return False
             else:
                 logging.debug("Sliver found" + str(response["value"]["sliver_urn"]))
+                #logging.debug("Manifest:" + str(response["value"]["manifest"]))
                 self.sliverurn = response["value"]["sliver_urn"]
+                self.manifest = response["value"]["manifest"]
                 return True
 
 
@@ -379,7 +381,7 @@ class emulabConnection:
         params["credentials"] = (self.slice,)
         params["slice_urn"] = self.sliceurn
 
-        rval, response = self.do_method("cm", "GetSliver", params, version="2.0")
+        rval, response = self.do_method_retry("cm", "GetSliver", params, version="2.0")
         if rval:
             logging.error("Could not get sliver credentials")
             return False
@@ -405,7 +407,7 @@ class emulabConnection:
         params["credentials"] = (self.sliver,)
         params["sliver_urn"] = self.sliverurn
 
-        rval, response = self.do_method("cm", "DeleteSliver", params, version="2.0")
+        rval, response = self.do_method_retry("cm", "DeleteSliver", params, version="2.0")
         if rval:
             logging.error("Deleting sliver failed")
             return False
@@ -422,7 +424,7 @@ class emulabConnection:
         params["slice_urn"] = self.sliceurn
         params["credentials"] = (self.sliver,)
 
-        rval, response = self.do_method("cm", "SliverStatus", params, version="2.0")
+        rval, response = self.do_method_retry("cm", "SliverStatus", params, version="2.0")
         if rval:
             logging.error("Could not get sliver status")
             return None
@@ -466,19 +468,47 @@ class emulabConnection:
 
 
     def stopExperiment(self):
+        # TODO: Should also delete slice, otherwise problems might come up for multiple successive experiments
         return self.deleteSliver()
 
+    # Actually not needed, since exclusive VMs get their own address and are accessible through port 22
+    def getVMPorts(self):
+        self.UpdateSliverInformation()
 
-    def getAddresses(self):
         if self.manifest is None:
             logging.info("No sliver seems to exist")
             return None
         else:
-            #logging.info("Manifest:" + str(self.manifest)) 
-            return self.manifest
+            logging.debug("Find all ports...")
+            logging.info("in getAddresses() - Manifest:" + str(self.manifest)) 
+            pattern = re.compile('port=\"[0-9]+\"')
+            matches = pattern.findall(str(self.manifest))
+            logging.debug("All ports found:" + str(matches))
+
+            numberPattern = re.compile('[0-9]+')
+            result = []
+            for i in matches:
+                num = (numberPattern.findall(i))[0]
+                if num == '22':
+                    continue
+                else:
+                    result.append(num)
+            logging.debug("All VM ports:" + str(result))
+
+            
+            if len(result) == 0:
+                logging.warn("No VM port found")
+            elif len(result) > 1:
+                logging.warn("Multiple VM ports found")
+            else:
+                logging.info("One VM port found:" + str(result[0]))
+            return result
+
 
 
 if __name__ == "__main__":
+    logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
+
     try:
         #emuConn = emulabConnection("cabart","/home/cabart",".ssl/encrypted.pem",".ssl/password")
         emuConn = emulabConnection("cabart", certificate_loc=".ssl/encrypted.pem",password_loc=".ssl/password")

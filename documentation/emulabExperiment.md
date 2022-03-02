@@ -29,7 +29,6 @@ Currently none
 
 not needed anymore
 
-
 ## Pipeline of ./run.sh (and ./run_emulab_experiments.py)
 
 1. run main script (./run_emulab_experiments.py) with some config
@@ -38,9 +37,51 @@ not needed anymore
 3. Wait for hardware setup to complete
     - Setting up of virtual switch on a virtual machine might take up to ~10min
 4. Start experiment, using ssh connections to all remote hardware resources
+    - Upload config file to all nodes
+    - start receiving script on receiver
+    - start sending script on sender
 5. Get data from experiment using scp
     - save all data in results/\<config-name\>/emulab_experiments
 6. Shutdown hardware (or repeat for multiple experiments)
+
+## Folder Structures
+
+### receiver
+
+~~~bash
+/local
+  - cc-model-code-main?
+  - results
+    - iperf_s_tcp.log | iperf_s_udp.log (or according to config)
+  receiver.log
+~~~
+
+### senderX
+
+~~~bash
+/local
+  - cc-model-code-main?
+  - results
+    - 
+  senderX.log
+~~~
+
+## Some notes about send and receive node scripts
+
+Get the interface name for sending data into the experiment network
+
+~~~bash
+ip route show 10.0.0.0/24 | grep -o "dev \S* " | grep -o " \S*"
+~~~
+
+Ideally when doing this in python, do the _ip_ command with popen and do the grep part with regular expressions (re)
+
+~~~python
+output = subprocess.check_output(["ip","route","show","10.0.0.0/24"]).decode("utf-8")
+pattern = re.compile('dev \S*')
+result = pattern.findall(output)[0].split()[1]
+print(result)
+~~~
 
 ## Parameters
 
@@ -69,19 +110,23 @@ not needed anymore
 
 Server Connection over emulab:
 
-> hrn:  utahemulab.\<project-name>.\<experiment-name>
->
-> urn:  urn:publicid:IDN+emulab.net:\<project-name>+slice+\<experiment-name>
->
-> ssh -p 22 \<user_name>@\<node-name>.\<experiment_name>.\<project_name>.emulab.net
+~~~bash
+hrn:  utahemulab.\<project-name>.\<experiment-name>
+
+urn:  urn:publicid:IDN+emulab.net:\<project-name>+slice+\<experiment-name>
+
+ssh -p 22 \<user_name>@\<node-name>.\<experiment_name>.\<project_name>.emulab.net
+~~~
 
 Server Connection using protogeni:
 
-> hrn:  utahemulab.\<slice-name>
->
-> urn:  urn:publicid:IDN+emulab.net+slice+\<slice-name>
->
-> ssh -p 22 \<user_name>@\<node-name>.\<sliver_name>.\<emulab-net>.emulab.net
+~~~bash
+hrn:  utahemulab.\<slice-name>
+
+urn:  urn:publicid:IDN+emulab.net+slice+\<slice-name>
+
+ssh -p 22 \<user_name>@\<node-name>.\<sliver_name>.emulab-net.emulab.net
+~~~
 
 For virtual machines: Use a specific port (given at runtime)
 
