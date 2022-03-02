@@ -9,11 +9,14 @@ Click on any node in the topology and choose the `shell` menu item. When your sh
 # Heavily based on Simons code
 # but aims for a clear distinction between config generation and experiment code
 
+from enum import auto
 import sys
 import yaml
 import os
 import pprint
 import time
+
+from pexpect import pxssh
 
 from generateRspec import *
 from generateConfig import *
@@ -21,7 +24,10 @@ from serverCommunication import *
 from emulabConnection import *
 
 import logging
-logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
+logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.DEBUG)
+
+
+
 
 def main(config_name):
 
@@ -57,8 +63,9 @@ def main(config_name):
             # do experiment
 
             emulab_config = get_emulab_config("emulab_experiments/emulab_config.yaml")
+            experiment_name = "emulab-experiment"
             try:
-                emuServer = emulabConnection(emulab_config["username"],emulab_config["home"],emulab_config["certificate_location"],emulab_config["password_location"])
+                emuServer = emulabConnection(emulab_config["username"],emulab_config["home"],emulab_config["certificate_location"],emulab_config["password_location"],experiment_name=experiment_name)
             except InitializeError as e:
                 print("Emulab initialization failed:", str(e))
                 print("Connection could not get established, abort...")
@@ -71,54 +78,92 @@ def main(config_name):
             rspec = createUnboundRspec(exp_config)
 
             #if emuServer.startExperiment(duration=1, rspec=rspec):
-            if emuServer.startExperiment(duration=1):
+            if emuServer.startExperiment(duration=1, rspec=rspec):
                 print("Experiment is ready")
             else:
                 print("Experiment is not ready, timeout maybe too low or there was an error when starting up")
                 sys.exit(1)
             
-            print(emuServer.getAddresses())
+            #vmPort = emuServer.getVMPorts()
+
+            # Connect to all experiment nodes (sender, switch, receiver)
+            connectAll = True
+            sshPubKey = os.path.join(emulab_config["home"],emulab_config["ssh_key_location"])
+            numSender = exp_config['inferred']['num_senders']
+
+            def connectSSH(nodename, port="22"):
+                node = nodename + "." + experiment_name + ".emulab-net.emulab.net"
+                s = pxssh.pxssh(options={"StrictHostKeyChecking": "no"},timeout=30)
+                s.login(node,emulab_config["username"],port=port,ssh_key=sshPubKey,sync_multiplier=2)
+                return s
+            
+            senderSSH = []
+            for i in range(numSender):
+                try:
+                    s = connectSSH("sender" + str(i))
+                    senderSSH.append(s)
+                    #node = "sender" + str(i) + "." + experiment_name + ".emulab-net.emulab.net"
+                    #s = pxssh.pxssh(options={"StrictHostKeyChecking": "no"},timeout=30)
+                    #s.login(node,emulab_config["username"],port="22",ssh_key=sshPubKey,sync_multiplier=2)
+                    #senderSSH.append(s)
+                except pxssh.ExceptionPxssh as e:
+                    connectAll = False
+                    logging.error("Login to node failed: sender" + str(i))
+                    logging.error(e)
+            
+            if len(senderSSH) == numSender:
+                logging.info("all sender logins worked")
+            else:
+                logging.error("some sender login connections failed")
+
+            # connect to receiver
+            try:
+                recSSH = connectSSH("receiver")
+            except pxssh.ExceptionPxssh as e:
+                connectAll = False
+                logging.error("Login to receiver node failed: " + e)
+
+            # connect to switch
+            try:
+                switchSSH = connectSSH("switch")
+            except pxssh.ExceptionPxssh as e:
+                connectAll = False
+                logging.error("Login to switch node failed: " + e)
+
+            # check all connections
+            def uptimeCheckSSH(s:pxssh.pxssh):
+                s.sendline("uptime")
+                s.prompt()
+                return str(s.before.decode("utf-8"))
+
+            # Check if all connections worked and start experiment
+            if connectAll:
+                # do experiment
+                for i in range(numSender):
+                    logging.debug("Test sender" + str(i) + " uptime:" + uptimeCheckSSH(senderSSH[i]))    
+                logging.debug("Test switch uptime:" + uptimeCheckSSH(switchSSH))
+                logging.debug("Test receiver uptime: " + uptimeCheckSSH(recSSH))
+
+            else:
+                logging.error("Some connections did not work!")
+
+            # send config file to all sender and receiver
+            for i in range(numSender):
+
+
+            # logout from all ssh connections
+            for i in range(numSender):
+                senderSSH[i].logout()
+            recSSH.logout()
+            switchSSH.logout()
 
             # do experiment in between...
-            exp_duration = 1
+            exp_duration = 2
             print("Wait for " + str(exp_duration) + " minutes to shut down experiment")
             time.sleep(exp_duration*60)
 
             emuServer.stopExperiment()
 
-            # do serverCommunication setup by building context        
-            #emulab_config = get_emulab_config("emulab_experiments/emulab_config.yaml")
-            #context = buildContext(emulab_config)
-
-            #from geni.util import loadContext
-            #context = loadContext()
-
-            sname = "test"
-            #ans = pg.UTAH_PG.listresources(context,sname=sname)
-            #ans = pg.UTAH_PG.listresources(context)
-            #pprint.pprint(ans)
-
-            #ans = pg.UTAH_PG.getversion(context)
-            #pprint.pprint(ans)
-
-            '''
-            # start sliver
-            sname = "emulab_experiment"
-            ans = pg.UTAH_PG.createsliver(context,sname,rspec)
-            pprint.pprint(ans)
-
-            for i in range(15):
-                time.sleep(60)
-                print("-"*30)
-                print("status report:")
-                ans = pg.UTAH_PG.sliverstatus(context,sname)
-                pprint.pprint(ans)
-
-            print("-"*30)
-            print("delete sliver")
-            ans = pg.UTAH_PG.deletesliver(context,sname)
-            pprint.pprint(ans)
-            print("deleted sliver")'''
         else:
             continue
 
