@@ -19,6 +19,8 @@ PROBING_INTERVAL = 1
 
 NPATHS = 1
 
+INTERFACE = ''
+
 import logging
 
 logging.basicConfig(
@@ -27,6 +29,16 @@ logging.basicConfig(
     datefmt="%H:%M:%S", 
     level=logging.DEBUG
 )
+
+
+def getInterface(): 
+    output = subprocess.check_output(["ip","route","show","10.0.0.0/24"]).decode("utf-8")
+    pattern = re.compile('dev \S*')
+    logging.debug("Get all interfaces: " + str(pattern.findall(output)))
+    result = str(pattern.findall(output)[0].split()[1])
+    logging.info("interface: " + result)
+    return result
+
 
 # TODO: change interface to correct one
 def startTcpDump(hostID):
@@ -82,6 +94,9 @@ def udp_oscillation_command(currPath, IPNum, desthostID):
 
 
 def run(behavior_index, desthostID, config):
+    global INTERFACE
+    INTERFACE = getInterface()
+
     print(config['sending_behavior'][behavior_index].keys())
     hostID, behavior = [(i, j) for i, j in config['sending_behavior'][behavior_index].items()][0]
     IPNum = behavior_index + 3 # TODO: Check this

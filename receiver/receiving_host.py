@@ -23,7 +23,7 @@ def getInterface():
     output = subprocess.check_output(["ip","route","show","10.0.0.0/24"]).decode("utf-8")
     pattern = re.compile('dev \S*')
     logging.debug("Get all interfaces: " + str(pattern.findall(output)))
-    result = pattern.findall(output)[0].split()[1]
+    result = str(pattern.findall(output)[0].split()[1])
     logging.info("interface: " + result)
     return result
 
