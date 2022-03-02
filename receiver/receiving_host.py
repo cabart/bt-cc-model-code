@@ -5,8 +5,10 @@ import time
 import subprocess
 import yaml
 import os
+import re
 
 RESULT_FILE_PREFIX = ''
+INTERFACE = ''
 
 import logging
 logging.basicConfig(
@@ -17,12 +19,22 @@ logging.basicConfig(
 )
 
 
+def getInterface(): 
+    output = subprocess.check_output(["ip","route","show","10.0.0.0/24"]).decode("utf-8")
+    pattern = re.compile('dev \S*')
+    logging.debug("Get all interfaces: " + str(pattern.findall(output)))
+    result = pattern.findall(output)[0].split()[1]
+    logging.info("interface: " + result)
+    return result
+
+
 def startTcpDump():
     # > '+RESULT_FILE_PREFIX+'hostdata/hDest-eth'+str(i)+'.log
     for i in range(1):
-        with open(RESULT_FILE_PREFIX+'hostdata/hDest-eth'+str(i)+'.log', 'w+') as f:
-            tcpDumpCommmand = ('tcpdump -tt -i hDest-eth'+str(i)+' -e -v -n -S -x -s 96').split()
-            subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)
+        #with open(RESULT_FILE_PREFIX+'hostdata/hDest-eth'+str(i)+'.log', 'w+') as f:
+        #    tcpDumpCommmand = ('tcpdump -tt -i hDest-eth'+str(i)+' -e -v -n -S -x -s 96').split()
+            #subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)
+            # TODO: add correct interface
             logging.info("Started tcpdump.")
 
 
@@ -55,6 +67,8 @@ def startUdpServer(config):
 
 def main(config):
     global RESULT_FILE_PREFIX
+    global INTERFACE
+    INTERFACE = getInterface()
     RESULT_FILE_PREFIX = config['result_dir']
     logging.info("Started receiver node")
 
@@ -104,9 +118,13 @@ def main(config):
 #    configfile_location = sys.argv[2]
 #    return desthostID, configfile_location
 
+
+    
+
 if __name__ == "__main__":
 #    desthostID, configloc = parseargs()
     f = open("/local/config.yaml", "r")
     config = yaml.safe_load(f)
     f.close()
+
     main(config)

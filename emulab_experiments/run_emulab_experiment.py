@@ -179,7 +179,7 @@ def main(config_name):
                 v.logout()
 
             # do experiment in between...
-            exp_duration = 30
+            exp_duration = 2
             logging.info("Wait for " + str(exp_duration) + " minutes to shut down experiment")
             time.sleep(exp_duration*60)
 

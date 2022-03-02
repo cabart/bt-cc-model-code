@@ -350,7 +350,7 @@ class emulabConnection:
             logging.info("Sliver successfully created")
             self.sliver, self.manifest = response["value"]
             #print("sliver:",self.sliver,"\n\n\n")
-            print("manifest:",self.manifest,"\n\n")
+            #print("manifest:",self.manifest,"\n\n")
             logging.info("Access nodes with: ssh -p 22 " + self.user + "@<node-name>." + self.experiment_name + ".emulab-net.emulab.net")
             logging.info("This does only work for exclusive/hardware node, VMs have to be accessed using a specific port, see manifest")
             return True
@@ -480,7 +480,7 @@ class emulabConnection:
             return None
         else:
             logging.debug("Find all ports...")
-            logging.info("in getAddresses() - Manifest:" + str(self.manifest)) 
+            #logging.info("in getAddresses() - Manifest:" + str(self.manifest)) 
             pattern = re.compile('port=\"[0-9]+\"')
             matches = pattern.findall(str(self.manifest))
             logging.debug("All ports found:" + str(matches))

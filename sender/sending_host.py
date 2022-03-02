@@ -42,7 +42,8 @@ def setTSO(hostID, on_mode):
     mode = "on" if on_mode else "off"
     for ifID in range(NPATHS):
         turnoffTSOCommand = ("ethtool -K %s-eth%d tso %s" % (hostID, ifID, mode)).split()
-        output = str(subprocess.check_output(turnoffTSOCommand))
+        # TODO: change this interface name
+        #output = str(subprocess.check_output(turnoffTSOCommand))
     logging.info("TSO turned " + str(mode))
 
 # TODO: change this
