@@ -22,6 +22,7 @@ import time
 import os
 import ssl
 import re
+import traceback
 
 # server connection libraries
 from urllib.parse import urlsplit
@@ -199,6 +200,8 @@ class emulabConnection:
                 logging.error("Consult: http://www.protogeni.net/trac/protogeni/wiki/HostNameMismatch")
                 logging.error(e)
                 return (-1, None)
+            except Exception as e:
+                logging.error("Some error has occured during emulab server connection:" + str(traceback.format_exc()))
 
         # If server call successfull
         # Parse the response
@@ -456,6 +459,8 @@ class emulabConnection:
 
         
     def startExperiment(self, duration=4, rspec=None):
+        # for testing only
+        duration = 10 # TODO: Take this out later
         self.createSlice(duration)
         self.createSliver(rspec)
 

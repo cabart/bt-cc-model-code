@@ -42,7 +42,9 @@ def getInterface():
 
 def startTcpDump(hostID):
     global INTERFACE
-    with open('/local/results/hostdata/tcpsender' + hostID + '.log', 'w+') as f:
+    #with open('/local/results/hostdata/tcpsender' + hostID + '.log', 'w+') as f:
+    path = os.path.join(RESULT_DIR,'tcpsender' + hostID + '.log')
+    with open(path, 'w+') as f:
         tcpDumpCommmand = ('tcpdump -tt -i '+ INTERFACE +' -n -e -v -S -x -s 96').split()
         subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)
         logging.info("Started tcpdump.")
@@ -146,7 +148,8 @@ def run(behavior_index, desthostID, config):
     currPath = '0'
 
     #iperfoutputfile = (config['result_dir'] + "hostlogs/" + config['iperf_outfile_client']).replace("$", str(IPNum))
-    iperfoutputfile = ("/local/results/senderlogs/" + config['iperf_outfile_client']).replace("$", str(IPNum))
+    path = os.path.join(RESULT_DIR, config['iperf_outfile_client'])
+    iperfoutputfile = (path).replace("$", str(IPNum))
     fout = open(iperfoutputfile, 'w')
 
     time.sleep(2)
@@ -172,23 +175,24 @@ def run(behavior_index, desthostID, config):
     logging.info("Host %s finished experiment" % hostID)
     print("finished")
 
-#def parseargs():
-#    behavior_index = int(sys.argv[1])
-#    desthostID = int(sys.argv[2])
-#    configfile_location = sys.argv[3]
-#    return behavior_index, desthostID, configfile_location
 
 if __name__ == "__main__":
-    #behavior_index, desthostID, configloc = parseargs()
     f = open("/local/config.yaml", "r")
     config = yaml.safe_load(f)
     f.close()
 
-    # create result folders on node
-    if not os.path.exists("/local/results/senderlogs"):
-        os.makedirs("/local/results/senderlogs")
-    if not os.path.exists("/local/results/hostdata"):
-        os.makedirs("/local/results/hostdata")
+    # create experiment path and folders on node
+    global RESULT_DIR 
+    RESULT_DIR = os.path.join("/local/",config['result_dir'])
+    if not os.path.exists(RESULT_DIR):
+        os.makedirs(RESULT_DIR)
+
+    path = os.path.join(RESULT_DIR,'senderlogs')
+    if not os.path.exists(path):
+        os.makedirs(path)
+    path = os.path.join(RESULT_DIR,'hostdata')
+    if not os.path.exists(path):
+        os.makedirs(path)
 
     behavior_index = 0
     try:

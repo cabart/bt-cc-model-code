@@ -30,10 +30,12 @@ def getInterface():
 
 def startTcpDump():
     global INTERFACE
+    global RESULT_FILE_PREFIX
     # > '+RESULT_FILE_PREFIX+'hostdata/hDest-eth'+str(i)+'.log
     for i in range(1):
         #with open(RESULT_FILE_PREFIX+'hostdata/hDest-eth'+str(i)+'.log', 'w+') as f:
-        with open('/local/results/receiverIface.log', 'w+') as f:
+        path = os.path.join(RESULT_FILE_PREFIX,"receiverIface.log")
+        with open(path, 'w+') as f:
             tcpDumpCommmand = ('tcpdump -tt -i ' + INTERFACE + ' -e -v -n -S -x -s 96').split()
             subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)
             logging.info("Started tcpdump.")
@@ -41,8 +43,9 @@ def startTcpDump():
 
 # Start iperf server with TCP on destination hosts
 def startTcpServer(config):
+    global RESULT_FILE_PREFIX
     #resfile = config['result_dir'] + config['iperf_outfile_server_tcp']
-    resfile = os.path.join("/local/results",config['iperf_outfile_server_tcp'])
+    resfile = os.path.join(RESULT_FILE_PREFIX,config['iperf_outfile_server_tcp'])
     samplingperiod = config['iperf_sampling_period_server']
     fout = open(resfile, "w")
     tcpIperfCommand = ('iperf -s -p 5002 -e -i %d -t %d -f %s' % (samplingperiod, config['send_duration'] + 5, config['iperf_outfile_format'])).split()
@@ -67,11 +70,17 @@ def startUdpServer(config):
 
 
 def main(config):
+    logging.info("Started receiver node")
+
     global RESULT_FILE_PREFIX
     global INTERFACE
     INTERFACE = getInterface()
-    RESULT_FILE_PREFIX = config['result_dir']
-    logging.info("Started receiver node")
+    RESULT_FILE_PREFIX = os.path.join("/local",config['result_dir'])
+
+    # create results folder for experiment run
+    if not os.path.exists(RESULT_FILE_PREFIX):
+        os.makedirs(RESULT_FILE_PREFIX)
+    logging.info("path to results: " + str(RESULT_FILE_PREFIX))
 
     # Announce yourself
     #pingCommand = ("ping -c 3 -I %s-eth%d 10.0.%d.%d" % ("hDest", 0, 0, 1)).split()
@@ -114,22 +123,10 @@ def main(config):
     print("finished")
 
 
-#def parseargs():
-#    desthostID = int(sys.argv[1])
-#    configfile_location = sys.argv[2]
-#    return desthostID, configfile_location
-
-
-    
-
 if __name__ == "__main__":
 #    desthostID, configloc = parseargs()
     f = open("/local/config.yaml", "r")
     config = yaml.safe_load(f)
     f.close()
-
-    # create result folders on node
-    if not os.path.exists("/local/results"):
-        os.makedirs("/local/results")
 
     main(config)
