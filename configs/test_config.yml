@@ -46,10 +46,9 @@ experiment_parameters:
 
 # --------------------------------------------------
 
-# deprected, to be removed
 emulab_parameters:
   base_config: emulab_experiments/base_config.yaml
-  username: cabart
+  username: cabart # deprected, to be removed
 
 # --------------------------------------------------
 plots:

@@ -15,12 +15,12 @@ import geni.rspec.pg as pg
 repoURL = "https://github.com/cabart/bt-cc-model-code/archive/main.tar.gz"
 repoPath = "/local"
 
-def createUnboundRspec(config):
+def createUnboundRspec(numSender, linkCapacity):
     """ Returns unbound rspec file as string """
 
-    sendDuration = config['send_duration']
-    numSender = config['inferred']['num_senders']
-    linkCapacity = config['link_capacity'] * 1000   # in kilobytes
+    #numSender = config['inferred']['num_senders']
+    #linkCapacity = config['link_capacity'] * 1000   # in kilobytes
+    linkCapacity *= 1000 # in kilobytes
     # ... more parameters
 
     # Create a portal context.

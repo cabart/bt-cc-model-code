@@ -25,7 +25,8 @@ done
 
 if [ "$verbose" = true ]
 then
-	sudo -E ./env/bin/python ./emulab_experiments/run_emulab_experiment.py ./configs/test_config.yml
+	sudo ./env/bin/python ./emulab_experiments/run_emulab_experiment.py ./configs/test_config.yml
+	#sudo ./env/bin/python ./emulab_experiments/run_emulab_experiment.py ./configs/big_experiment.yaml
 else
 	sudo -E ./env/bin/python ./emulab_experiments/run_emulab_experiment.py ./configs/test_config.yml &> /dev/null
 fi

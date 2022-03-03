@@ -42,13 +42,14 @@ def get_config(config_name):
         config = yaml.safe_load(config_file)
 
     fixed_parameters = config['common_parameters']
-    for pox_dir_candidate in config['experiment_parameters']['pox_directory']:
-        if os.path.exists(pox_dir_candidate):
-            fixed_parameters['pox_directory'] =  pox_dir_candidate
-            break
-    if 'pox_directory' not in fixed_parameters.keys():
-        print("No valid pox_directory found! Aborting...")
-        sys.exit(1)
+    # Don't need pox directory for emulab
+    #for pox_dir_candidate in config['experiment_parameters']['pox_directory']:
+    #    if os.path.exists(pox_dir_candidate):
+    #        fixed_parameters['pox_directory'] =  pox_dir_candidate
+    #        break
+    #if 'pox_directory' not in fixed_parameters.keys():
+    #    print("No valid pox_directory found! Aborting...")
+    #    sys.exit(1)
 
     if 'delete_raw_dump' in config['experiment_parameters'].keys():
         fixed_parameters['delete_raw_dump'] = config['experiment_parameters']['delete_raw_dump']

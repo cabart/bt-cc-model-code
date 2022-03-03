@@ -1,3 +1,3 @@
 #!/usr/bin/bash
-echo "new sender started:" >> /tmp/startup.txt 
-hostname >> /tmp/startup.txt
+echo "new sender started:" >> /local/sender.log
+hostname >> /local/sender.log

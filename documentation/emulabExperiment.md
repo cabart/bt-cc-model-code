@@ -44,6 +44,15 @@ not needed anymore
     - save all data in results/\<config-name\>/emulab_experiments
 6. Shutdown hardware (or repeat for multiple experiments)
 
+Program code:
+
+1. Generate config for all experiments and all possible parameter configurations
+2. Create emulab topology for all experiments -> limitations are stricter than for minilab experiments
+    - different number of senders is critical
+    - link capacity has to be set to maximum
+    - set link latency at start of individual experiment
+    - How to handle source_latency_range, qdisc, switch_buffer?
+
 ## Folder Structures
 
 ### receiver
