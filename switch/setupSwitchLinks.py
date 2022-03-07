@@ -34,8 +34,8 @@ def addReceiverDelay(latency, use_red):
     try:
         subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","1:0","netem","delay",lat])
         if use_red:
-            limit = 400000
-            avpkt = 1000
+            limit = str(400000)
+            avpkt = str(1000)
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","red","limit",limit,"avpkt",avpkt])
         else:
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","htb"])
