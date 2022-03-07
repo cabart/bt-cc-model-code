@@ -28,7 +28,7 @@ def removeSendersDelay():
             sys.exit(1)
 
 
-def addReceiverDelay(latency, use_red):
+def addReceiverDelay(latency, use_red, capacity):
     lat = str(latency) + "ms"
     iface = getIfaces.getReceiveriface()
     try:
@@ -36,7 +36,8 @@ def addReceiverDelay(latency, use_red):
         if use_red:
             limit = str(400000)
             avpkt = str(1000)
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","red","limit",limit,"avpkt",avpkt])
+            bandwidth = str(capacity) + "Mbit"
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","red","limit",limit,"avpkt",avpkt,"bandwidth",bandwidth])
         else:
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","htb"])
     except subprocess.CalledProcessError as e:
@@ -66,6 +67,7 @@ def main():
     config = yaml.safe_load(f)
     f.close()
     latency = config["link_latency"]
+    capacity = config["link_capacity"]
     source_latency = config["source_latency"]
     source_latency_range = config["source_latency_range"]
     use_red = config["use_red"]
@@ -76,7 +78,7 @@ def main():
         # add latency for each sender
         if source_latency:
             addSendersDelay(source_latency_range)
-        addReceiverDelay(latency, use_red)
+        addReceiverDelay(latency, use_red, capacity)
 
     elif args.d:
         removeSendersDelay()
