@@ -10,7 +10,7 @@ import subprocess
 import getIfaces
 
 def addSendersDelay(latency_range):
-    lat = "1ms" # TODO: change to actual latency
+    lat = str(latency_range[0]) + "ms" # TODO: use actual range
     for iface in getIfaces.getSenderifaces():
         try:
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat])
@@ -28,11 +28,17 @@ def removeSendersDelay():
             sys.exit(1)
 
 
-def addReceiverDelay(latency):
+def addReceiverDelay(latency, use_red):
     lat = str(latency) + "ms"
     iface = getIfaces.getReceiveriface()
     try:
-        subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat])
+        subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","1:0","netem","delay",lat])
+        if use_red:
+            limit = 400000
+            avpkt = 1000
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","red","limit",limit,"avpkt",avpkt])
+        else:
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","htb"])
     except subprocess.CalledProcessError as e:
         # adding failed, most likely because there already is a root qdisc
         sys.exit(1)
@@ -62,9 +68,7 @@ def main():
     latency = config["link_latency"]
     source_latency = config["source_latency"]
     source_latency_range = config["source_latency_range"]
-    print("link latency:",latency)
-    print("source latency:",source_latency)
-    print("source latency range:",source_latency_range)
+    use_red = config["use_red"]
 
     if args.a:
         # add interfaces
@@ -72,7 +76,7 @@ def main():
         # add latency for each sender
         if source_latency:
             addSendersDelay(source_latency_range)
-        addReceiverDelay(latency)
+        addReceiverDelay(latency, use_red)
 
     elif args.d:
         removeSendersDelay()
