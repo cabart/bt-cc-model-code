@@ -9,12 +9,11 @@ Click on any node in the topology and choose the `shell` menu item. When your sh
 # Heavily based on Simons code
 # but aims for a clear distinction between config generation and experiment code
 
-from enum import auto
 import sys
 import yaml
 import os
-import pprint
 import time
+import argparse
 
 from pexpect import pxssh
 import subprocess
@@ -49,9 +48,7 @@ def main(config_name):
     with open(config['emulab_parameters']['base_config'], 'r') as base_config_file:
         base_config = yaml.safe_load(base_config_file)
 
-    # for now, only run one parameter combination
     logging.info("Number of combinations: " + str(len(config['param_combinations'])))
-    first = True
 
     # ------------------------
     # Do emulab setup for all experiments
@@ -181,13 +178,14 @@ def main(config_name):
                     sys.exit(1)
             logging.info("Experiment config successfully uploaded to every experiment node")
             
+            logging.info("start measuring on switch, sender and receiver")
             # TODO: Start switch measurements
             
-            # TODO: start receiving host measurements
+            # Start 'receiver node' measurements
             recSSH.sendline("bash /local/bt-cc-model-code-main/receiver/receiving_host.sh")
             
-            time.sleep(1)
-            # TODO: start sending hosts measurements
+            time.sleep(1) # make sure the server is running on receiver node
+            # Start 'sender nodes' measurements
             for k,v in senderSSH.items():
                 v.sendline("bash /local/bt-cc-model-code-main/sender/sending_host.sh")
             
@@ -198,6 +196,26 @@ def main(config_name):
 
             recSSH.prompt()
             logging.info("started receiver: " + str(recSSH.before.decode("utf-8")))
+
+            # end all tcpdump measurements
+            for k,v in allSSH.items():
+                logging.info("end tcpdump on " + k)
+                v.sendline('sudo pkill -SIGTERM -f tcpdump')
+                v.prompt()
+
+            logging.info("Finished all measurements")
+
+            logging.info("start getting all measurement data from server")
+            # TODO: get all data using scp
+            for k,v in allAddresses.items():
+                source = v + ":" + os.path.join("/local/",exp_config["result_dir"])
+                target = os.path.join(os.getcwd(),exp_config["result_dir"])
+
+                retCode = subprocess.call(["scp","-P","22","-i",sshKey,source,target])
+                if retCode:
+                    logging.error("Could not download results from " + k)
+            logging.info("Download completed")
+
 
             for dir_name, _, file_names in os.walk(result_folder):
                 for file_name in file_names:
@@ -212,16 +230,37 @@ def main(config_name):
     for k,v in allSSH.items():
         v.logout()
 
-    # Wait with shuting down for debugging purposes
-    exp_duration = 5
-    logging.info("Wait for " + str(exp_duration) + " minutes to shut down experiment")
-    time.sleep(exp_duration*60)
-
-    emuServer.stopExperiment()
+    # terminate experiment
+    logging.info("All experiments done and downloaded")
+    while True:
+        inp = input("Do you want to shutdown emulab hardware? [y/n]:") 
+        if inp == "y" or inp == "yes" or inp == "Y" or input == "Yes":
+            logging.info("Stop hardware")
+            emuServer.stopExperiment()
+            logging.info("Hardware has been stopped")
+            break
+        elif inp == "n" or inp == "no" or inp == "N" or inp == "No":
+            logging.info("Do not stop hardware, may use up unneccessary hardware resources at emulab site")
+            break
+        else:
+            logging.warn("invalid input")
+    logging.info("All done.")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        main(sys.argv[1])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v","--verbosity",action="store_true",default=False,help="show debug output")
+    parser.add_argument("-c","--config",type=str,default="./configs/test_config.yml", help="path to your config file")
+    args = parser.parse_args()
+
+    if args.verbosity:
+        logging.getLogger().setLevel(logging.DEBUG)
     else:
-        logging.error("Please provide a multi-experiment config file.")
+        logging.getLogger().setLevel(logging.INFO)
+
+    if not os.path.exists(args.config):
+        logging.info("File does not exist or path is wrong")
+        sys.exit(1)
+    else:
+        main(args.config)
+

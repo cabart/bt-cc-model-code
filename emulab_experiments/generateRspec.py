@@ -18,10 +18,7 @@ repoPath = "/local"
 def createUnboundRspec(numSender, linkCapacity):
     """ Returns unbound rspec file as string """
 
-    #numSender = config['inferred']['num_senders']
-    #linkCapacity = config['link_capacity'] * 1000   # in kilobytes
-    linkCapacity *= 1000 # in kilobytes
-    # ... more parameters
+    linkCapacity *= 1000 # in kilobytes # TODO: seems not to be true
 
     # Create a portal context.
     pc = portal.Context()
@@ -47,9 +44,10 @@ def createUnboundRspec(numSender, linkCapacity):
 
     # Add Switch to the request
     mysw = request.XenVM("switch")
-    mysw.exclusive = True
+    mysw.exclusive = True # otherwise overall bandwith is limited, and port would not be 22
     mysw.disk_image = img
 
+    # TODO: Test this
     # give switch a public ip address, maybe not needed
     mysw.routable_control_ip = True
 
@@ -60,8 +58,7 @@ def createUnboundRspec(numSender, linkCapacity):
 
     startupSender = "/local/bt-cc-model-code-main/sender/sender_startup.sh"
 
-    rcviface = mysw.addInterface("eth2")
-    #rcviface.addAddress(pg.IPv4Address("192.168.1.1","255.255.255.0"))
+    rcviface = mysw.addInterface("rcv")
     rcviface.addAddress(pg.IPv4Address("10.0.0.1","255.255.255.0"))
 
     # set physical type of virtual switch
@@ -81,10 +78,9 @@ def createUnboundRspec(numSender, linkCapacity):
         node.addService(pg.Install(url=repoURL, path=repoPath))
         node.addService(pg.Execute(shell="bash", command=startupSender))
         
-        iface = node.addInterface("eth1")
-        #iface.addAddress(pg.IPv4Address("192.168.1." + str(i+3),"255.255.255.0"))
+        iface = node.addInterface("sendIface" + str(i))
         iface.addAddress(pg.IPv4Address("10.0.0." + str(i+3),"255.255.255.0"))
-        sendiface = mysw.addInterface()
+        sendiface = mysw.addInterface("send" + str(i))
         sendiface.addAddress(pg.IPv4Address("10.0.0." + str(numSender+3+i),"255.255.255.0"))
         link = request.Link("sendLink-" + str(i),members=[iface,sendiface])
         link.bandwidth = linkCapacity
@@ -98,12 +94,10 @@ def createUnboundRspec(numSender, linkCapacity):
     if phystype != "":
         rcvNode.hardware_type = phystype
 
-    iface = rcvNode.addInterface("eth2")
-    #iface.addAddress(pg.IPv4Address("192.168.1.2","255.255.255.0"))
+    iface = rcvNode.addInterface("rcv")
     iface.addAddress(pg.IPv4Address("10.0.0.2","255.255.255.0"))
     link = request.Link("rcvLink", members=[rcviface,iface])
     link.bandwidth = linkCapacity
     
     # Print the RSpec to the enclosing page.
-    #pc.printRequestRSpec(request)
     return request.toXMLString(pretty_print=True, ucode=True)

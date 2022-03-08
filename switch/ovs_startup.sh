@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 
 echo "ovs setup script running..." >> /tmp/startup.txt
+ifconfig >> /tmp/startup.txt
 
 while getopts ":n:" flag
 do
