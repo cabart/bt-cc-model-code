@@ -199,7 +199,7 @@ def inferConfig(config):
 
 
 # Create final configuration from experiment configuration
-def setup_configuration(config):
+def setup_configuration(config,senderLatencies):
 
     # infer default if sender parameters not set explicitly
     config = completeSenderConfig(config)
@@ -208,6 +208,17 @@ def setup_configuration(config):
     config = inferConfig(config)
     # Create Result Directory
     resultFilePrefix = generateResultDir(config['inferred']['behavior_summary'], config)  # save it as: 'result_dir' config
+
+    # add sender latencies
+    sending_behavior = []
+    index = 0
+    for x in config['sending_behavior']:
+        for k,v in x.items():
+            v["latency"] = senderLatencies[index]
+            sending_behavior.append({k: v})
+        index += 1
+
+    config['sending_behavior'] = sending_behavior
 
     # Dump Config
     f = open(resultFilePrefix + 'config.yaml', 'w')

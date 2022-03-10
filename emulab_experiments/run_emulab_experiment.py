@@ -14,6 +14,7 @@ import yaml
 import os
 import time
 import argparse
+import random
 
 from pexpect import pxssh
 import subprocess
@@ -27,7 +28,16 @@ import logging
 logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
 
 
-def main(config_name):
+def sourceLatency(nSender, minLat, maxLat):
+    random.seed(1)
+    lat = []
+    for i in range(nSender):
+        random_latency = int(random.uniform(minLat,maxLat)*10)/10
+        lat.append(random_latency)
+    return lat
+
+
+def main(config_name, download):
     logging.debug("Setting up configuration")
 
     config = get_config(config_name)
@@ -157,16 +167,14 @@ def main(config_name):
         exp_config = config_edited_copy(base_config, custom=pc_map)
         exp_config['base_res_dir'] = result_folder # same for all parameter configuration and runs
 
+        # setup source latency ranges for this configuration
+        senderLatencies = sourceLatency(exp_config['senders'],exp_config['source_latency_range'][0],exp_config['source_latency_range'][1])
+
         # Do all runs for a specific configuration
         for i in range(config['experiment_parameters']['runs']):
             # Do a single run of a parameter combination
             logging.info("Run " + str(i+1) + " / " + str(config['experiment_parameters']['runs']))
-            exp_config = setup_configuration(exp_config) # needs to be done every run
-
-            if not first:
-                continue
-            else:
-                first = False
+            exp_config = setup_configuration(exp_config, senderLatencies) # needs to be done every run
 
             # send config file to all nodes
             file = os.path.join(os.getcwd(),exp_config["result_dir"])
@@ -180,6 +188,7 @@ def main(config_name):
             
             logging.info("start measuring on switch, sender and receiver")
             # TODO: Start switch measurements
+            #switchSSH.sendline("/local/bt-cc-model-code-main/switch/queueMeasurements.py")
             
             # Start 'receiver node' measurements
             recSSH.sendline("bash /local/bt-cc-model-code-main/receiver/receiving_host.sh")
@@ -205,16 +214,19 @@ def main(config_name):
 
             logging.info("Finished all measurements")
 
-            logging.info("start getting all measurement data from server")
-            # TODO: get all data using scp
-            for k,v in allAddresses.items():
-                source = v + ":" + os.path.join("/local/",exp_config["result_dir"])
-                target = os.path.join(os.getcwd(),exp_config["result_dir"])
+            if download:
+                logging.info("start getting all measurement data from server")
+                # TODO: get all data using scp
+                for k,v in allAddresses.items():
+                    source = v + ":" + os.path.join("/local/",exp_config["result_dir"])
+                    target = os.path.join(os.getcwd(),exp_config["result_dir"])
 
-                retCode = subprocess.call(["scp","-P","22","-i",sshKey,source,target])
-                if retCode:
-                    logging.error("Could not download results from " + k)
-            logging.info("Download completed")
+                    retCode = subprocess.call(["scp","-rp","-P","22","-i",sshKey,source,target])
+                    if retCode:
+                        logging.error("Could not download results from " + k)
+                logging.info("Download completed")
+            else:
+                logging.info("Set flag to not download files")
 
 
             for dir_name, _, file_names in os.walk(result_folder):
@@ -231,7 +243,7 @@ def main(config_name):
         v.logout()
 
     # terminate experiment
-    logging.info("All experiments done and downloaded")
+    logging.info("All experiments done")
     while True:
         inp = input("Do you want to shutdown emulab hardware? [y/n]:") 
         if inp == "y" or inp == "yes" or inp == "Y" or input == "Yes":
@@ -251,6 +263,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-v","--verbosity",action="store_true",default=False,help="show debug output")
     parser.add_argument("-c","--config",type=str,default="./configs/test_config.yml", help="path to your config file")
+    parser.add_argument("-d","--download",action="store_true",default=False,help="don't download results (for testing only)")
     args = parser.parse_args()
 
     if args.verbosity:
@@ -262,5 +275,5 @@ if __name__ == "__main__":
         logging.info("File does not exist or path is wrong")
         sys.exit(1)
     else:
-        main(args.config)
+        main(args.config, not args.download)
 

@@ -20,8 +20,9 @@ def getReceiveriface():
 def main():
     # get arguments
     parser = argparse.ArgumentParser(description='Add or delete delay at network interface')
-    parser.add_argument('-a', action='store_true', help='add delayed interface')
-    parser.add_argument('-d', action='store_true', help='delete delayed interface')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-a', action='store_true', help='add delayed interface')
+    group.add_argument('-d', action='store_true', help='delete delayed interface')
     args = parser.parse_args()
 
     # get latency from config file
@@ -29,22 +30,24 @@ def main():
     config = yaml.safe_load(f)
     f.close()
     latency = config["link_latency"]
+    capacity = config["link_capacity"]
 
     # get interface name
     iface = getReceiveriface()
     lat = str(latency) + "ms"
+    cap = str(capacity) + "mbit"
 
     if args.a:
         # add interface
         try:
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat]).decode("utf-8")
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat,"rate",cap])
         except subprocess.CalledProcessError as e:
             # adding failed, most likely because there already is a root qdisc
             sys.exit(1)
     elif args.d:
         # remove interface
         try:
-            subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"]).decode("utf-8")
+            subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
         except subprocess.CalledProcessError as e:
             # removing failed, most likely because there is no netem qdisc setup
             sys.exit(1)

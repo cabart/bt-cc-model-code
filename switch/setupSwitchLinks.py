@@ -9,17 +9,22 @@ import subprocess
 
 import getIfaces
 
-def addSendersDelay(latency_range):
+def addSendersLimits(latency_range, source_latency, capacity):
     lat = str(latency_range[0]) + "ms" # TODO: use actual range
+    bandwidth = str(capacity) + "mbit"
     for iface in getIfaces.getSenderifaces():
         try:
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat])
+            if source_latency:
+                subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat,"rate",bandwidth])
+            else:
+                subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","rate",bandwidth])
+
         except subprocess.CalledProcessError as e:
             # adding failed, most likely because there already is a root qdisc
             sys.exit(1)
 
 
-def removeSendersDelay():
+def removeSendersLimits():
     for iface in getIfaces.getSenderifaces():
         try:
             subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
@@ -28,38 +33,41 @@ def removeSendersDelay():
             sys.exit(1)
 
 
-def addReceiverDelay(latency, use_red, capacity):
+def addReceiverLimits(latency, use_red, capacity):
     lat = str(latency) + "ms"
     iface = getIfaces.getReceiveriface()
+    bandwidth = str(capacity) + "mbit"
     try:
-        subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","1:0","netem","delay",lat])
         if use_red:
             limit = str(400000)
             avpkt = str(1000)
-            bandwidth = str(capacity) + "Mbit"
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","red","limit",limit,"avpkt",avpkt,"bandwidth",bandwidth])
+            #subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","red","limit",limit,"avpkt",avpkt,"bandwidth",bandwidth])
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","1:0","red","limit",limit,"avpkt",avpkt,"bandwidth",bandwidth])
         else:
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","htb"])
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","1:0","htb"])
+
+        subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","netem","delay",lat,"rate",bandwidth])
+        
     except subprocess.CalledProcessError as e:
         # adding failed, most likely because there already is a root qdisc
         sys.exit(1)
 
 
-def removeReceiverDelay():
+def removeReceiverLimits():
     iface = getIfaces.getReceiveriface()
     try:
-        subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
+        subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root"])
     except subprocess.CalledProcessError as e:
         # removing failed, most likely because there is no netem qdisc setup
         sys.exit(1)
 
 
-
 def main():
     # get arguments
     parser = argparse.ArgumentParser(description='Add or delete delay at network interfaces')
-    parser.add_argument('-a', action='store_true', help='add delayed interfaces')
-    parser.add_argument('-d', action='store_true', help='delete delayed interfaces')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-a', action='store_true', help='add delayed interfaces')
+    group.add_argument('-d', action='store_true', help='delete delayed interfaces')
     args = parser.parse_args()
 
     # get latency from config file
@@ -76,13 +84,12 @@ def main():
         # add interfaces
 
         # add latency for each sender
-        if source_latency:
-            addSendersDelay(source_latency_range)
-        addReceiverDelay(latency, use_red, capacity)
+        addSendersLimits(source_latency_range, source_latency, capacity)
+        addReceiverLimits(latency, use_red, capacity)
 
     elif args.d:
-        removeSendersDelay()
-        removeReceiverDelay()
+        removeSendersLimits()
+        removeReceiverLimits()
     else:
         parser.print_help()
         sys.exit(1)
