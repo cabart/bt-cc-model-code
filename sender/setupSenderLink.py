@@ -13,7 +13,7 @@ def getSenderIface(senderNumber):
         data = [x.split() for x in f.readlines()]
 
     # only keep ifaces connected to switch
-    address = "10.0.0." + ifaceNumber
+    address = "10.0.0." + str(ifaceNumber)
     filtered = filter(lambda x: x[1] == address, data)
     extendedIfaces = list(filtered)
 
@@ -23,7 +23,7 @@ def getSenderIface(senderNumber):
 def main():
     # get arguments
     parser = argparse.ArgumentParser(description='Add or delete delay at network interface')
-    group = parser.add_mutually_exclusive_group()
+    group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-a', action='store_true', help='add delayed interface')
     group.add_argument('-d', action='store_true', help='delete delayed interface')
     args = parser.parse_args()

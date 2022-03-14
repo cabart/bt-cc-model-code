@@ -41,12 +41,12 @@ def addReceiverLimits(latency, use_red, capacity):
         if use_red:
             limit = str(400000)
             avpkt = str(1000)
-            #subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","red","limit",limit,"avpkt",avpkt,"bandwidth",bandwidth])
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","1:0","red","limit",limit,"avpkt",avpkt,"bandwidth",bandwidth])
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"handle","2:0","parent","1:0","netem","delay",lat,"rate",bandwidth])
         else:
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","1:0","htb"])
-
-        subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","netem","delay",lat,"rate",bandwidth])
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","1:","htb","default","1"])
+            subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","1:","classid","1:1","htb","rate",bandwidth])
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","netem","delay",lat,"rate",bandwidth])
         
     except subprocess.CalledProcessError as e:
         # adding failed, most likely because there already is a root qdisc
