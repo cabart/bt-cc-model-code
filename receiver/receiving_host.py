@@ -6,17 +6,12 @@ import subprocess
 import yaml
 import os
 import re
+from ..emulab_experiments import remoteLib
 
 RESULT_FILE_PREFIX = ''
 INTERFACE = ''
 
 import logging
-logging.basicConfig(
-    filename="/local/receiver.log",
-    format='%(asctime)s:: %(levelname)s:: %(message)s',
-    datefmt="%H:%M:%S", 
-    level=logging.DEBUG
-)
 
 
 def getInterface(): 
@@ -70,21 +65,24 @@ def startUdpServer(config):
 
 
 def main(config):
-    logging.info("Started receiver node")
-
     global RESULT_FILE_PREFIX
     global INTERFACE
     INTERFACE = getInterface()
     RESULT_FILE_PREFIX = os.path.join("/local",config['result_dir'])
 
     # create results folder for experiment run
-    if not os.path.exists(RESULT_FILE_PREFIX):
-        os.makedirs(RESULT_FILE_PREFIX)
-    logging.info("path to results: " + str(RESULT_FILE_PREFIX))
+    remoteLib.createFolderStructure(RESULT_FILE_PREFIX)
 
-    # Announce yourself
-    #pingCommand = ("ping -c 3 -I %s-eth%d 10.0.%d.%d" % ("hDest", 0, 0, 1)).split()
-    #subprocess.call(pingCommand)
+    # setup logging
+    logPath = os.path.join(RESULT_FILE_PREFIX,"/hostlogs/hDest.log")
+    logging.basicConfig(
+        filename=logPath,
+        format='%(created).6f:: %(levelname)s:: %(message)s',
+        level=logging.DEBUG
+    )
+
+    logging.info("Started receiver node")
+    logging.info("path to results: " + str(RESULT_FILE_PREFIX))
 
     numSender = config['senders']
     for i in range(numSender):
@@ -120,11 +118,10 @@ def main(config):
         udp_f.close()
         logging.info("Finished UDP Server.")
 
-    print("finished")
+    logging.info("finished")
 
 
 if __name__ == "__main__":
-#    desthostID, configloc = parseargs()
     f = open("/local/config.yaml", "r")
     config = yaml.safe_load(f)
     f.close()

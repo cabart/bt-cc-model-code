@@ -12,7 +12,7 @@ import re
 import time
 import random
 import yaml
-#from pyroute2 import IPRoute
+from ..emulab_experiments import remoteLib
 
 INTERVALS = 15
 PROBING_INTERVAL = 1
@@ -22,13 +22,6 @@ NPATHS = 1
 INTERFACE = ''
 
 import logging
-
-logging.basicConfig(
-    filename="/local/sender.log",
-    format='%(asctime)s:: %(levelname)s:: %(message)s',
-    datefmt="%H:%M:%S", 
-    level=logging.DEBUG
-)
 
 
 def getInterface(): 
@@ -184,25 +177,24 @@ if __name__ == "__main__":
     # create experiment path and folders on node
     global RESULT_DIR 
     RESULT_DIR = os.path.join("/local/",config['result_dir'])
-    if not os.path.exists(RESULT_DIR):
-        os.makedirs(RESULT_DIR)
+    remoteLib.createFolderStructure(RESULT_DIR)
 
-    path = os.path.join(RESULT_DIR,'senderlogs')
-    if not os.path.exists(path):
-        os.makedirs(path)
-    path = os.path.join(RESULT_DIR,'hostdata')
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-    behavior_index = 0
+    behavior_index = -1
     try:
-        output = subprocess.check_output(["hostname"]).decode("utf-8")
-        pattern = re.compile("[0-9]+")
-        behavior_index = int(pattern.findall(output)[0])
-        logging.info("username: " + output + " and behaviour_index: " + str(behavior_index))
+        hostname, behavior_index = remoteLib.getSenderID()
     except subprocess.CalledProcessError as e:
         logging.error("Could not get sender number: " + str(e))
         sys.exit(1)
+
+    # log to: /local/results/.../hostlogs/hX.log
+    logPath = os.path.join(RESULT_DIR,"hostlogs/h" + str(behavior_index) + ".log")
+    logging.basicConfig(
+        filename=logPath,
+        format='%(created).6f:: %(levelname)s:: %(message)s',
+        level=logging.DEBUG
+    )
+
+    logging.info("username: " + hostname + " and behaviour_index: " + str(behavior_index))
 
     run(behavior_index, 2, config)
 
