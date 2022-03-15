@@ -36,7 +36,7 @@ def getInterface():
 def startTcpDump(hostID):
     global INTERFACE
     #with open('/local/results/hostdata/tcpsender' + hostID + '.log', 'w+') as f:
-    path = os.path.join(RESULT_DIR,'tcpsender' + hostID + '.log')
+    path = os.path.join(RESULT_DIR,'hostdata/tcpsender' + hostID + '.log')
     with open(path, 'w+') as f:
         tcpDumpCommmand = ('tcpdump -tt -i '+ INTERFACE +' -n -e -v -S -x -s 96').split()
         subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)

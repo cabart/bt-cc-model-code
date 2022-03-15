@@ -29,7 +29,7 @@ def startTcpDump():
     # > '+RESULT_FILE_PREFIX+'hostdata/hDest-eth'+str(i)+'.log
     for i in range(1):
         #with open(RESULT_FILE_PREFIX+'hostdata/hDest-eth'+str(i)+'.log', 'w+') as f:
-        path = os.path.join(RESULT_FILE_PREFIX,"receiverIface.log")
+        path = os.path.join(RESULT_FILE_PREFIX,"hostdata/receiverIface.log")
         with open(path, 'w+') as f:
             tcpDumpCommmand = ('tcpdump -tt -i ' + INTERFACE + ' -e -v -n -S -x -s 96').split()
             subprocess.Popen(tcpDumpCommmand, stdout=f, stderr=f)
