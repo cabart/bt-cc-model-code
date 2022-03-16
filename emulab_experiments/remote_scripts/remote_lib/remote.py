@@ -63,3 +63,8 @@ def getIface():
         for sender and receiver node. Will return 'unknown' at switch 
     '''
     return "iface"
+
+def getName():
+    output = subprocess.check_output(["hostname"]).decode("utf-8")
+    output = output.split(".")
+    return output[0]

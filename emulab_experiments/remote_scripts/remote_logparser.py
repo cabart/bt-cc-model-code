@@ -223,13 +223,12 @@ def parseTCPDumpMininet(datafiles, filedestination):
 #--------------------------------------------------------------------------------
 # Get load data
 def calculateLoad(econfig):
+    hostname = remote.getName()
 
-    parsed_data = RESULT_FILE_PREFIX + condenseddatafolder + 'tcpdump.csv'
+    parsed_data = RESULT_FILE_PREFIX + condenseddatafolder + 'tcpdump' + hostname + '.csv'
     if not os.path.exists(parsed_data):
         datafiles = [f for f in os.listdir(RESULT_FILE_PREFIX + datafolder)]
         parseTCPDumpMininet(datafiles, parsed_data)
-
-    condensed_data_file = RESULT_FILE_PREFIX + condenseddatafolder + 'tcpd_dataframe.csv'
 
 
 def main():
