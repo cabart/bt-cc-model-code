@@ -3,6 +3,7 @@
 import os
 import subprocess
 import re
+import yaml
 import sys
 
 def createFolderStructure(result_directory):
@@ -43,3 +44,14 @@ def getSenderID():
 
     return output, behavior_index
         
+def getConfig():
+    '''
+        Returns the config that is currently saved at this node from location '/local/config.yaml'
+
+        Returns:
+            config, a dictionary-like object of the experiment configuration
+    '''
+    f = open("/local/config.yaml", "r")
+    config = yaml.safe_load(f)
+    f.close()
+    return config

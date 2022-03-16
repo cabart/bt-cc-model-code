@@ -64,7 +64,8 @@ def startUdpServer(config):
     return proc, fout
 
 
-def main(config):
+def main():
+    config = remote.getConfig()
     global RESULT_FILE_PREFIX
     global INTERFACE
     INTERFACE = getInterface()
@@ -74,7 +75,7 @@ def main(config):
     remote.createFolderStructure(RESULT_FILE_PREFIX)
 
     # setup logging
-    logPath = os.path.join(RESULT_FILE_PREFIX,"/hostlogs/hDest.log")
+    logPath = os.path.join(RESULT_FILE_PREFIX,"hostlogs/hDest.log")
     logging.basicConfig(
         filename=logPath,
         format='%(created).6f:: %(levelname)s:: %(message)s',
@@ -122,8 +123,4 @@ def main(config):
 
 
 if __name__ == "__main__":
-    f = open("/local/config.yaml", "r")
-    config = yaml.safe_load(f)
-    f.close()
-
-    main(config)
+    main()

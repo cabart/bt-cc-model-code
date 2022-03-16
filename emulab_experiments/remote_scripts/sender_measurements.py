@@ -142,7 +142,7 @@ def run(behavior_index, desthostID, config):
 
     #iperfoutputfile = (config['result_dir'] + "hostlogs/" + config['iperf_outfile_client']).replace("$", str(IPNum))
     path = os.path.join(RESULT_DIR, config['iperf_outfile_client'])
-    iperfoutputfile = (path).replace("$", str(IPNum))
+    iperfoutputfile = (path).replace("$", str(behavior_index))
     fout = open(iperfoutputfile, 'w')
 
     time.sleep(2)
@@ -170,9 +170,7 @@ def run(behavior_index, desthostID, config):
 
 
 if __name__ == "__main__":
-    f = open("/local/config.yaml", "r")
-    config = yaml.safe_load(f)
-    f.close()
+    config = remote.getConfig()
 
     # create experiment path and folders on node
     global RESULT_DIR 
