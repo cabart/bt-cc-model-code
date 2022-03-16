@@ -56,7 +56,7 @@ def createUnboundRspec(numSender, linkCapacity):
     startupOVS = "/local/bt-cc-model-code-main/switch/ovs_startup.sh -n " + str(numSender)
     mysw.addService(pg.Execute(shell="bash", command=startupOVS))
 
-    startupSender = "/local/bt-cc-model-code-main/sender/sender_startup.sh"
+    startupSender = "/local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_startup.sh"
 
     rcviface = mysw.addInterface("rcv")
     rcviface.addAddress(pg.IPv4Address("10.0.0.1","255.255.255.0"))
@@ -89,6 +89,8 @@ def createUnboundRspec(numSender, linkCapacity):
     rcvNode = request.RawPC("receiver")
     rcvNode.disk_image = img
     rcvNode.addService(pg.Install(url=repoURL, path=repoPath))
+    startupReceiver = "/local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_startup.sh"
+    rcvNode.addService(pg.Execute(shell="bash", command=startupReceiver))
 
     # set physical type of receiver node
     if phystype != "":

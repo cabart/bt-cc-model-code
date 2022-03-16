@@ -6,7 +6,7 @@ import subprocess
 import yaml
 import os
 import re
-import remoteLib
+from remote_lib import remote
 
 RESULT_FILE_PREFIX = ''
 INTERFACE = ''
@@ -71,7 +71,7 @@ def main(config):
     RESULT_FILE_PREFIX = os.path.join("/local",config['result_dir'])
 
     # create results folder for experiment run
-    remoteLib.createFolderStructure(RESULT_FILE_PREFIX)
+    remote.createFolderStructure(RESULT_FILE_PREFIX)
 
     # setup logging
     logPath = os.path.join(RESULT_FILE_PREFIX,"/hostlogs/hDest.log")

@@ -12,7 +12,7 @@ import re
 import time
 import random
 import yaml
-import remoteLib
+from remote_lib import remote
 
 INTERVALS = 15
 PROBING_INTERVAL = 1
@@ -177,11 +177,11 @@ if __name__ == "__main__":
     # create experiment path and folders on node
     global RESULT_DIR 
     RESULT_DIR = os.path.join("/local/",config['result_dir'])
-    remoteLib.createFolderStructure(RESULT_DIR)
+    remote.createFolderStructure(RESULT_DIR)
 
     behavior_index = -1
     try:
-        hostname, behavior_index = remoteLib.getSenderID()
+        hostname, behavior_index = remote.getSenderID()
     except subprocess.CalledProcessError as e:
         logging.error("Could not get sender number: " + str(e))
         sys.exit(1)

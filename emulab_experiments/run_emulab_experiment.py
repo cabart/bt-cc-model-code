@@ -45,11 +45,11 @@ def setupInterfaces(start,senderSSH,recSSH,switchSSH):
         logging.info("Removing delay and capacity limits at all interfaces")
     
     for k,v in senderSSH.items():
-        v.sendline("python /local/bt-cc-model-code-main/sender/setupSenderLink.py" + flag)
+        v.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
         v.prompt()
         #logging.info("setup interface at " + k + ":" + v.before.decode("utf-8"))
     
-    recSSH.sendline("python /local/bt-cc-model-code-main/receiver/setupReceiverLink.py" + flag)
+    recSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
     recSSH.prompt()
     #logging.info("setup interface at receiver:" + recSSH.before.decode("utf-8"))
 
@@ -228,12 +228,12 @@ def main(config_name, download):
             logging.info("Started queue measurement with process id : " + pid_queue)
             
             # Start 'receiver node' measurements
-            recSSH.sendline("bash /local/bt-cc-model-code-main/receiver/receiving_host.sh")
+            recSSH.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_measurements.sh")
             
             time.sleep(1) # make sure the server is running on receiver node
             # Start 'sender nodes' measurements
             for k,v in senderSSH.items():
-                v.sendline("bash /local/bt-cc-model-code-main/sender/sending_host.sh")
+                v.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_measurements.sh")
             
             # receive answers
             for k,v in senderSSH.items():
@@ -256,7 +256,12 @@ def main(config_name, download):
             logging.info("Finished all measurements")
             
             # remove interfaces at senders, switch, receiver
+            # could be done only once for every parameter configuration, but we always
+            # want fastest speeds possible for transferring data to receiver node
             setupInterfaces(False,senderSSH,recSSH,switchSSH)
+
+            # Get data to receiver
+
 
             if download:
                 logging.info("start getting all measurement data from server")
