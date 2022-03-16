@@ -1,3 +1,3 @@
-python ./queueMeasurements.py &> /dev/null &
+sudo python ./queueMeasurements.py &> /dev/null &
 PID=$!
 echo $PID

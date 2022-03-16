@@ -12,7 +12,7 @@ import re
 import time
 import random
 import yaml
-from ..emulab_experiments import remoteLib
+import remoteLib
 
 INTERVALS = 15
 PROBING_INTERVAL = 1

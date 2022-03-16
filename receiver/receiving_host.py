@@ -6,7 +6,7 @@ import subprocess
 import yaml
 import os
 import re
-from ..emulab_experiments import remoteLib
+import remoteLib
 
 RESULT_FILE_PREFIX = ''
 INTERFACE = ''
