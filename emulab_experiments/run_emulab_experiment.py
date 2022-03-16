@@ -36,6 +36,30 @@ def sourceLatency(nSender, minLat, maxLat):
         lat.append(random_latency)
     return lat
 
+def setupInterfaces(start,senderSSH,recSSH,switchSSH):
+    if start:
+        flag = " -a"
+        logging.info("Adding delay and capacity limits at all interfaces")
+    else:
+        flag = " -d"
+        logging.info("Removing delay and capacity limits at all interfaces")
+    
+    for k,v in senderSSH.items():
+        v.sendline("python /local/bt-cc-model-code-main/sender/setupSenderLink.py" + flag)
+        v.prompt()
+        #logging.info("setup interface at " + k + ":" + v.before.decode("utf-8"))
+    
+    recSSH.sendline("python /local/bt-cc-model-code-main/receiver/setupReceiverLink.py" + flag)
+    recSSH.prompt()
+    #logging.info("setup interface at receiver:" + recSSH.before.decode("utf-8"))
+
+    switchSSH.sendline("python /local/bt-cc-model-code-main/switch/setupSwitchLinks.py" + flag)
+    switchSSH.prompt()
+    #logging.info("setup interface at switch:" + switchSSH.before.decode("utf-8"))
+    logging.info("All interface setups done")
+
+    return
+
 
 def main(config_name, download):
     logging.debug("Setting up configuration")
@@ -185,10 +209,23 @@ def main(config_name, download):
                     logging.error("Uploading of config file to " + k + " did not work")
                     sys.exit(1)
             logging.info("Experiment config successfully uploaded to every experiment node")
+        
+            # Setup interfaces at senders, switch and receiver
+            setupInterfaces(True,senderSSH,recSSH,switchSSH)
             
             logging.info("start measuring on switch, sender and receiver")
-            # TODO: Start switch measurements
-            #switchSSH.sendline("/local/bt-cc-model-code-main/switch/queueMeasurements.py")
+
+            # Start switch measurements
+            switchSSH.sendline("nohup python /local/bt-cc-model-code-main/switch/queueMeasurements.py &")
+            switchSSH.prompt()            
+            response = switchSSH.before.decode("utf-8")
+
+            pidPattern = re.compile("\[[0-9]+\] [0-9]+")
+            number = re.compile("[0-9]+")
+
+            extendedPid = pidPattern.findall(response)[0]
+            pid_queue = number.findall(extendedPid)[1]
+            logging.info("Started queue measurement with process id : " + pid_queue)
             
             # Start 'receiver node' measurements
             recSSH.sendline("bash /local/bt-cc-model-code-main/receiver/receiving_host.sh")
@@ -201,18 +238,25 @@ def main(config_name, download):
             # receive answers
             for k,v in senderSSH.items():
                 v.prompt()
-                logging.info("started " + k + ": " + str(v.before.decode("utf-8")))
+                logging.debug("started " + k + ": " + str(v.before.decode("utf-8")))
 
             recSSH.prompt()
-            logging.info("started receiver: " + str(recSSH.before.decode("utf-8")))
+            logging.debug("started receiver: " + str(recSSH.before.decode("utf-8")))
 
             # end all tcpdump measurements
             for k,v in allSSH.items():
                 logging.info("end tcpdump on " + k)
                 v.sendline('sudo pkill -SIGTERM -f tcpdump')
                 v.prompt()
+            
+            switchSSH.sendline("sudo kill -SIGTERM " + pid_queue)
+            switchSSH.prompt()
+            logging.info("Stopped queue measurement: " + switchSSH.before.decode("utf-8"))
 
             logging.info("Finished all measurements")
+            
+            # remove interfaces at senders, switch, receiver
+            setupInterfaces(False,senderSSH,recSSH,switchSSH)
 
             if download:
                 logging.info("start getting all measurement data from server")
