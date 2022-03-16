@@ -138,7 +138,7 @@ def parseTCPDumpMininet(datafiles, filedestination):
     data.append(['timestamp', 'measuredon', 'src', 'dest', 'load', 'payload', 'udpno', 'seqno', 'ackno', 'id'])
     for dfname in datafiles:
 
-        measured_on = re.match(r'h(.+)-.*', dfname).group(1)
+        measured_on = remote.getIface()
         datafile = RESULT_FILE_PREFIX+datafolder+dfname
         if more_output:
             print("Parsing datafile "+datafile+"...")

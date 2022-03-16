@@ -55,3 +55,11 @@ def getConfig():
     config = yaml.safe_load(f)
     f.close()
     return config
+
+# TODO: to be implemented
+def getIface():
+    '''
+        Get network interface name connected to experiment network, only use this function
+        for sender and receiver node. Will return 'unknown' at switch 
+    '''
+    return "iface"
