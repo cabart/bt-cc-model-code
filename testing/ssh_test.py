@@ -1,32 +1,39 @@
 from pexpect import pxssh
+import sys
+import time
+import re
 
 try:
     s = pxssh.pxssh()
-    print(s.login("node1.emulab-experiment.emulab-net.emulab.net", "cabart", port="22",ssh_key="/home/cabart/.ssh/id_ed25519"))
+    print(s.login("switch.emulab-experiment.emulab-net.emulab.net", "cabart", port="22",ssh_key="/home/cabart/.ssh/id_ed25519",sync_multiplier=2))
 except pxssh.ExceptionPxssh as e:
     print("pxssh failed on login:",e)
+    sys.exit(1)
 
-try:
-    #ss = pxssh.pxssh(timeout=10)
-    ss = pxssh.pxssh()
-    #print(ss.login("node2.emulab-experiment.emulab-net.emulab.net", "cabart", port="28002",ssh_key="/home/cabart/.ssh/id_ed25519"))
-    ss.login("pc606.emulab.net","cabart",port="26874",ssh_key="/home/cabart/.ssh/id_ed25519")
-except pxssh.ExceptionPxssh as e:
-    print("pxssh failed on login:",e)
 
 print("login worked")
 
-print("test uptime of machine 1:")
-s.sendline("uptime")
+print("test uptime of switch:")
+#s.sendline("uptime")
+s.sendline("nohup python /local/bt-cc-model-code-main/switch/queueMeasurements.py &")
+pidPattern = re.compile("\[[0-9]+\] [0-9]+")
+s.prompt()
+response = s.before.decode("utf-8")
+print(response)
+pidExtended = pidPattern.findall(response)[0]
+number = re.compile("[0-9]+")
+pid = number.findall(pidExtended)[1]
+print("pid",pid)
+
+time.sleep(5)
+s.sendline("pgrep -af python")
 s.prompt()
 response = s.before.decode("utf-8")
 print(response)
 
-print("test uptime of machine 2:")
-ss.sendline("uptime") # causes error for some reason?
-ss.prompt()
-response2 = ss.before.decode("utf-8")
-print(response2)
+s.sendline("kill -SIGTERM " + pid)
+s.prompt()
+response = s.before.decode("utf-8")
+print(response)
 
 s.logout()
-ss.logout()
