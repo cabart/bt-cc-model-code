@@ -15,8 +15,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import yaml
 import numpy as np
-from mininet_experiments.plotting import *
-from mininet_experiments.plotting_single import *
+from plotting import *
+from plotting_single import *
 #from plotting import *
 #from plotting_single import *
 

@@ -4,3 +4,4 @@ pexpect
 pandas
 matplotlib
 numpy
+colour

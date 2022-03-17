@@ -132,7 +132,7 @@ def generateResultDir(behavior_summary, config):
             os.system('mkdir -p ' + resultDir)
     resultDir += datetime.strftime(datetime.now(), "%Y-%m-%d--%H-%M-%S") + '/'
     os.system('mkdir -p ' + resultDir)
-    for rT in ['hostlogs/', 'hostdata/', 'condensed/']:
+    for rT in ['hostlogs/', 'hostdata/', 'condensed/', 'queue/']:
         os.mkdir(resultDir+rT)
     config['result_dir'] = resultDir
     return resultDir

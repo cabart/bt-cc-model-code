@@ -141,7 +141,8 @@ def run(behavior_index, desthostID, config):
     currPath = '0'
 
     #iperfoutputfile = (config['result_dir'] + "hostlogs/" + config['iperf_outfile_client']).replace("$", str(IPNum))
-    path = os.path.join(RESULT_DIR, config['iperf_outfile_client'])
+    path = os.path.join(RESULT_DIR, "hostlogs/")
+    path = os.path.join(path, config['iperf_outfile_client'])
     iperfoutputfile = (path).replace("$", str(behavior_index))
     fout = open(iperfoutputfile, 'w')
 

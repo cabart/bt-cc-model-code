@@ -26,7 +26,7 @@ def main():
     resultPath = os.path.join("/local",config['result_dir'])
     remote.createFolderStructure(resultPath)
 
-    result_file = os.path.join(resultPath,"condensed/queue_length.csv")
+    result_file = os.path.join(resultPath,"queue/queue_length.csv")
     sample_period = config['tc_queue_sample_period']
 
     dev_name = switch_get_ifaces.getReceiveriface()

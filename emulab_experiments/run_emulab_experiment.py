@@ -266,6 +266,15 @@ def main(config_name, download):
             # want fastest speeds possible for transferring data to receiver node
             setupInterfaces(False,senderSSH,recSSH,switchSSH)
 
+            # create condensed tcpdump files on remote nodes
+            logging.info("start creating condensed tcpdump files")
+            for k,v in allSSH.items():
+                if k == "switch": continue
+                v.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/remote_logparser.py")
+                v.prompt()
+                logging.info("created condensed tcpdump file on " + k)
+            logging.info("finished all condensed remote tcpdump files")
+
             # download condensed folder files and queue measurements
             if download:
                 logging.info("start getting all measurement data from server")
@@ -273,16 +282,19 @@ def main(config_name, download):
                 baseLocalFolder = os.path.join(os.getcwd(),exp_config["result_dir"])
 
                 # download condensed files
-                remoteFolder = os.path.join(baseRemoteFolder,"condensed")
-                localFolder = os.path.join(baseLocalFolder,"condensed")
+                remoteFolder = os.path.join(baseRemoteFolder,"condensed/")
+                localFolder = os.path.join(baseLocalFolder,"condensed/")
                 downloadFiles(allAddresses,sshKey,remoteFolder,localFolder)
 
                 # download logfiles
-                remoteFolder = os.path.join(baseRemoteFolder,"hostlogs")
-                localFolder = os.path.join(baseLocalFolder,"hostlogs")
+                remoteFolder = os.path.join(baseRemoteFolder,"hostlogs/")
+                localFolder = os.path.join(baseLocalFolder,"hostlogs/")
                 downloadFiles(allAddresses,sshKey,remoteFolder,localFolder)
 
-                
+                # download queue measurements from switch
+                remoteFolder = os.path.join(baseRemoteFolder,"queue/")
+                localFolder = os.path.join(baseLocalFolder,"queue/")
+                downloadFiles(allAddresses,sshKey,remoteFolder,localFolder)
 
                 logging.info("Download completed")
             else:
