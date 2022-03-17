@@ -283,20 +283,21 @@ def main(config_name, download):
 
                 # download condensed files
                 remoteFolder = os.path.join(baseRemoteFolder,"condensed/")
-                localFolder = os.path.join(baseLocalFolder,"condensed/")
-                downloadFiles(allAddresses,sshKey,remoteFolder,localFolder)
+                #localFolder = os.path.join(baseLocalFolder,"condensed/")
+                downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
 
                 # download logfiles
                 remoteFolder = os.path.join(baseRemoteFolder,"hostlogs/")
-                localFolder = os.path.join(baseLocalFolder,"hostlogs/")
-                downloadFiles(allAddresses,sshKey,remoteFolder,localFolder)
+                #localFolder = os.path.join(baseLocalFolder,"hostlogs/")
+                downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
 
                 # download queue measurements from switch
                 remoteFolder = os.path.join(baseRemoteFolder,"queue/")
-                localFolder = os.path.join(baseLocalFolder,"queue/")
-                downloadFiles(allAddresses,sshKey,remoteFolder,localFolder)
+                #localFolder = os.path.join(baseLocalFolder,"queue/")
+                downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
 
                 logging.info("Download completed")
+                logging.info("Find results of this run in: " + baseLocalFolder)
             else:
                 logging.info("Set flag to not download files")
 

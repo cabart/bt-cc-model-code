@@ -138,7 +138,7 @@ def parseTCPDumpMininet(datafiles, filedestination):
     data.append(['timestamp', 'measuredon', 'src', 'dest', 'load', 'payload', 'udpno', 'seqno', 'ackno', 'id'])
     for dfname in datafiles:
 
-        measured_on = remote.getIface()
+        measured_on = remote.measuredOnIndex()
         datafile = RESULT_FILE_PREFIX+datafolder+dfname
         if more_output:
             print("Parsing datafile "+datafile+"...")
@@ -207,6 +207,9 @@ def parseTCPDumpMininet(datafiles, filedestination):
                         if sequenceMatch and udpMatch:
                             print("Sequence AND UDP. Weird!")
 
+                        # change source and destination numbers from interface number to actual device number
+                        source = remote.ifaceNumberToDeviceNumber(source)
+                        destination = remote.ifaceNumberToDeviceNumber(destination)
                         line = [timestamp, measured_on, source, destination, load, payload, udpno, seqno, ackno, id]
                         data.append(line)
                     except:

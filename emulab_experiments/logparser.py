@@ -37,6 +37,7 @@ import pprint
 logfolder = 'hostlogs/'
 datafolder = 'hostdata/'
 condenseddatafolder = 'condensed/'
+queuefolder = 'queue/'
 
 TIMEAGGREGATION = 1  # Resolution of timestamps,  '1' rounds to 10ths of seconds, '2' rounds to 100ths, etc.
 SMOOTHING       = 1
@@ -316,6 +317,21 @@ def processTCPDdata(filename, econfig, timestep=0.1):
 # 	0x0030:  3031 3233 3435 3637 3839 3031 3233 3435
 
 def parseTCPDumpMininet(datafiles, filedestination):
+    # get datafiles tcpdumpsender1, tcpdumpsender2, ...
+    print("Parse tcpdump files to single tcpdump file")
+    print(datafiles)
+
+    realPaths = []
+    for path in datafiles:
+        realPaths.append(RESULT_FILE_PREFIX + condenseddatafolder + path)
+    print(realPaths)
+
+    df = pd.concat(map(pd.read_csv,realPaths),ignore_index=True)
+    df.sort_values("timestamp",ignore_index=True)
+    df.to_csv(filedestination,index=False)
+    print("parsed all tcpdump files to one file")
+
+    return
     # timestamp, measuredon, src, dest, load, payload, udpno, seqno, ackno
     more_output = False
     data = []
@@ -633,7 +649,8 @@ def calculateLoad(econfig):
 
     parsed_data = RESULT_FILE_PREFIX + condenseddatafolder + 'tcpdump.csv'
     if not os.path.exists(parsed_data):
-        datafiles = [f for f in os.listdir(RESULT_FILE_PREFIX + datafolder)]
+        # tcpdump.csv does not exist
+        datafiles = [f for f in os.listdir(RESULT_FILE_PREFIX + condenseddatafolder)]
         parseTCPDumpMininet(datafiles, parsed_data)
 
     condensed_data_file = RESULT_FILE_PREFIX + condenseddatafolder + 'tcpd_dataframe.csv'
@@ -773,7 +790,7 @@ def main(savePlot=False):
     print("============\nStarting with: ", RESULT_FILE_PREFIX, "\n==============")
     tcpd_data = calculateLoad(econfig)
     cwndData, ssthreshData = parseCwndFiles([f for f in os.listdir(RESULT_FILE_PREFIX+logfolder)])
-    memdata = loadFromCSV(RESULT_FILE_PREFIX + "sysmemusage.csv")
+    #memdata = loadFromCSV(RESULT_FILE_PREFIX + "sysmemusage.csv")
     if os.path.exists(RESULT_FILE_PREFIX+'bbr2_internals.log'):
         bbr2InternalsData = parse_bbr2_internals_file(RESULT_FILE_PREFIX+'bbr2_internals.log', RESULT_FILE_PREFIX+condenseddatafolder+'bbr2_internals.csv')
 
@@ -782,7 +799,7 @@ def main(savePlot=False):
 
     startAbsTs = tcpd_data['abs_ts'].values[0]
     endAbsTs = tcpd_data['abs_ts'].values[-1]
-    queueTs, queueVal = readQueueFile(RESULT_FILE_PREFIX + "queue_length.csv")
+    queueTs, queueVal = readQueueFile(RESULT_FILE_PREFIX + queuefolder + "queue_length.csv")
     print("Start/End timestamp: ", startTimestamp, endTimestamp)
     num_axes = sum([econfig['plot_loss'], econfig['plot_throughput'], econfig['plot_jitter'],
                     econfig['plot_cwnd'], econfig['plot_latency'], econfig['plot_queue'], econfig['plot_memory'],
@@ -819,7 +836,8 @@ def main(savePlot=False):
         stats.update(plotLoss(figurename, axes[ax_indx], tcpd_data, startTimestamp, endTimestamp, econfig))
         ax_indx += 1
     if econfig['plot_memory']:
-        stats.update(plotMemory(figurename, axes[ax_indx], memdata, startAbsTs, endAbsTs, econfig))
+        print("memory plotting not supported for emulab experiments")
+        #stats.update(plotMemory(figurename, axes[ax_indx], memdata, startAbsTs, endAbsTs, econfig))
         ax_indx += 1
 
     # TODO: iperf not well tested
