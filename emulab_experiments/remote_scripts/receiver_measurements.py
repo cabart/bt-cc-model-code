@@ -64,23 +64,8 @@ def startUdpServer(config):
     return proc, fout
 
 
-def main():
-    config = remote.getConfig()
+def main(config):
     global RESULT_FILE_PREFIX
-    global INTERFACE
-    INTERFACE = getInterface()
-    RESULT_FILE_PREFIX = os.path.join("/local",config['result_dir'])
-
-    # create results folder for experiment run
-    remote.createFolderStructure(RESULT_FILE_PREFIX)
-
-    # setup logging
-    logPath = os.path.join(RESULT_FILE_PREFIX,"hostlogs/hDest.log")
-    logging.basicConfig(
-        filename=logPath,
-        format='%(created).6f:: %(levelname)s:: %(message)s',
-        level=logging.DEBUG
-    )
 
     logging.info("Started receiver node")
     logging.info("path to results: " + str(RESULT_FILE_PREFIX))
@@ -123,4 +108,19 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    config = remote.getConfig()
+    INTERFACE = getInterface()
+    RESULT_FILE_PREFIX = os.path.join("/local",config['result_dir'])
+
+    # create results folder for experiment run
+    remote.createFolderStructure(RESULT_FILE_PREFIX)
+
+    # setup logging
+    logPath = os.path.join(RESULT_FILE_PREFIX,"hostlogs/hDest.log")
+    logging.basicConfig(
+        filename=logPath,
+        format='%(created).6f:: %(levelname)s:: %(message)s',
+        level=logging.DEBUG
+    )
+
+    main(config)

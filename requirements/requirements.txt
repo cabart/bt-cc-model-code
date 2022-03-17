@@ -1,3 +1,6 @@
 six
 pyyaml
 pexpect
+pandas
+matplotlib
+numpy
