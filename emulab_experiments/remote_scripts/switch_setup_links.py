@@ -7,12 +7,12 @@ import yaml
 import sys
 import subprocess
 
-import getIfaces
+import switch_get_ifaces
 
 def addSendersLimits(latency_range, source_latency, capacity):
     lat = str(latency_range[0]) + "ms" # TODO: use actual range
     bandwidth = str(capacity) + "mbit"
-    for iface in getIfaces.getSenderifaces():
+    for iface in switch_get_ifaces.getSenderifaces():
         try:
             if source_latency:
                 subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat,"rate",bandwidth])
@@ -25,7 +25,7 @@ def addSendersLimits(latency_range, source_latency, capacity):
 
 
 def removeSendersLimits():
-    for iface in getIfaces.getSenderifaces():
+    for iface in switch_get_ifaces.getSenderifaces():
         try:
             subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
         except subprocess.CalledProcessError as e:
@@ -35,7 +35,7 @@ def removeSendersLimits():
 
 def addReceiverLimits(latency, use_red, capacity):
     lat = str(latency) + "ms"
-    iface = getIfaces.getReceiveriface()
+    iface = switch_get_ifaces.getReceiveriface()
     bandwidth = str(capacity) + "mbit"
     try:
         if use_red:
@@ -54,7 +54,7 @@ def addReceiverLimits(latency, use_red, capacity):
 
 
 def removeReceiverLimits():
-    iface = getIfaces.getReceiveriface()
+    iface = switch_get_ifaces.getReceiveriface()
     try:
         subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root"])
     except subprocess.CalledProcessError as e:

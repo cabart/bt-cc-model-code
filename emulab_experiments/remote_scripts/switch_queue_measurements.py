@@ -1,10 +1,11 @@
 import yaml
-import getIfaces
+import switch_get_ifaces
 import re
 import subprocess
 import time
 import os
 import signal
+from remote_lib import remote
 
 class Killer:
     killed = False
@@ -22,13 +23,13 @@ def main():
     config = yaml.safe_load(f)
     f.close()
 
-    path = os.path.join("/local",config['result_dir'])
-    if not os.path.exists(path):
-        os.makedirs(path)
-    result_file = os.path.join(path,"queue_length.csv")
+    resultPath = os.path.join("/local",config['result_dir'])
+    remote.createFolderStructure(resultPath)
+
+    result_file = os.path.join(resultPath,"condensed/queue_length.csv")
     sample_period = config['tc_queue_sample_period']
 
-    dev_name = getIfaces.getReceiveriface()
+    dev_name = switch_get_ifaces.getReceiveriface()
 
     queue_pattern = re.compile(r'backlog\s[^\s]+\s([\d]+)p')
     cmd = "tc -s qdisc show dev " + dev_name

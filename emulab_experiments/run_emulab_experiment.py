@@ -53,13 +53,19 @@ def setupInterfaces(start,senderSSH,recSSH,switchSSH):
     recSSH.prompt()
     #logging.info("setup interface at receiver:" + recSSH.before.decode("utf-8"))
 
-    switchSSH.sendline("python /local/bt-cc-model-code-main/switch/setupSwitchLinks.py" + flag)
+    switchSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_setup_links.py" + flag)
     switchSSH.prompt()
     #logging.info("setup interface at switch:" + switchSSH.before.decode("utf-8"))
     logging.info("All interface setups done")
 
     return
 
+def downloadFiles(addresses,sshKey,remoteFolder,localFolder):
+    for k,v in addresses.items():
+        retCode = subprocess.call(["scp","-r","-P","22","-i",sshKey,v+":"+remoteFolder,localFolder])
+        if retCode:
+            logging.warn("downlaoding of config file from " + k + " did not work")
+            sys.exit(1)
 
 def main(config_name, download):
     logging.debug("Setting up configuration")
@@ -216,7 +222,7 @@ def main(config_name, download):
             logging.info("start measuring on switch, sender and receiver")
 
             # Start switch measurements
-            switchSSH.sendline("nohup python /local/bt-cc-model-code-main/switch/queueMeasurements.py &")
+            switchSSH.sendline("nohup python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_queue_measurements.py &")
             switchSSH.prompt()            
             response = switchSSH.before.decode("utf-8")
 
@@ -260,19 +266,24 @@ def main(config_name, download):
             # want fastest speeds possible for transferring data to receiver node
             setupInterfaces(False,senderSSH,recSSH,switchSSH)
 
-            # Get data to receiver
-
-
+            # download condensed folder files and queue measurements
             if download:
                 logging.info("start getting all measurement data from server")
-                # TODO: get all data using scp
-                for k,v in allAddresses.items():
-                    source = v + ":" + os.path.join("/local/",exp_config["result_dir"])
-                    target = os.path.join(os.getcwd(),exp_config["result_dir"])
+                baseRemoteFolder = os.path.join("/local",exp_config["result_dir"])
+                baseLocalFolder = os.path.join(os.getcwd(),exp_config["result_dir"])
 
-                    retCode = subprocess.call(["scp","-rp","-P","22","-i",sshKey,source,target])
-                    if retCode:
-                        logging.error("Could not download results from " + k)
+                # download condensed files
+                remoteFolder = os.path.join(baseRemoteFolder,"condensed")
+                localFolder = os.path.join(baseLocalFolder,"condensed")
+                downloadFiles(allAddresses,sshKey,remoteFolder,localFolder)
+
+                # download logfiles
+                remoteFolder = os.path.join(baseRemoteFolder,"hostlogs")
+                localFolder = os.path.join(baseLocalFolder,"hostlogs")
+                downloadFiles(allAddresses,sshKey,remoteFolder,localFolder)
+
+                
+
                 logging.info("Download completed")
             else:
                 logging.info("Set flag to not download files")

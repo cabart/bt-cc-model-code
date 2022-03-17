@@ -26,6 +26,12 @@ def createFolderStructure(result_directory):
     path = os.path.join(result_directory,'condensed')
     if not os.path.exists(path):
         os.makedirs(path)
+    path = os.path.join(result_directory,'iperf')
+    if not os.path.exists(path):
+        os.makedirs(path)
+    path = os.path.join(result_directory,'queue')
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 def getSenderID():
     '''

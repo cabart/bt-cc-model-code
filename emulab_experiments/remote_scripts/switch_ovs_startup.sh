@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
-echo "ovs setup script running..." >> /tmp/startup.txt
-ifconfig >> /tmp/startup.txt
+echo "ovs setup script running..." >> /local/startup.log
+ifconfig >> /local/startup.log
 
 while getopts ":n:" flag
 do
@@ -10,9 +10,9 @@ do
 	esac
 done
 
-echo "number of senders $sender" >> /tmp/startup.txt
+echo "number of senders $sender" >> /local/startup.log
 ((sender++))
-echo "number of total nodes $sender" >> /tmp/startup.txt
+echo "number of total nodes $sender" >> /local/startup.log
 
 sudo apt update
 sudo apt install -y openvswitch-switch
@@ -34,4 +34,4 @@ sudo ovs-vsctl set-fail-mode br0 standalone
 
 sudo ovs-vsctl show > /tmp/switch_bridge.txt
 
-echo "ovs setup complete!" >> /tmp/startup.txt
+echo "ovs setup complete!" >> /local/startup.log

@@ -10,6 +10,7 @@ Click on any node in the topology and choose the `shell` menu item. When your sh
 import geni.portal as portal
 # Import the ProtoGENI library.
 import geni.rspec.pg as pg
+import geni.rspec.emulab as emulab
 
 # global parameters
 repoURL = "https://github.com/cabart/bt-cc-model-code/archive/main.tar.gz"
@@ -46,6 +47,7 @@ def createUnboundRspec(numSender, linkCapacity):
     mysw = request.XenVM("switch")
     mysw.exclusive = True # otherwise overall bandwith is limited, and port would not be 22
     mysw.disk_image = img
+    mysw.installRootKeys(True,True)
 
     # TODO: Test this
     # give switch a public ip address, maybe not needed
@@ -53,10 +55,10 @@ def createUnboundRspec(numSender, linkCapacity):
 
     # add startup services to switch
     mysw.addService(pg.Install(url=repoURL, path=repoPath))
-    startupOVS = "/local/bt-cc-model-code-main/switch/ovs_startup.sh -n " + str(numSender)
+    startupOVS = "/local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_ovs_startup.sh -n " + str(numSender)
     mysw.addService(pg.Execute(shell="bash", command=startupOVS))
 
-    startupSender = "/local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_startup.sh"
+    startupSender = "/local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_startup.sh"
 
     rcviface = mysw.addInterface("rcv")
     rcviface.addAddress(pg.IPv4Address("10.0.0.1","255.255.255.0"))
@@ -71,6 +73,7 @@ def createUnboundRspec(numSender, linkCapacity):
         nodeName = "sender" + str(i)
         node = request.RawPC(nodeName)
         node.disk_image = img
+        node.installRootKeys(True,True)
         
         # set physical type of sender node
         if phystype != "":
@@ -88,8 +91,9 @@ def createUnboundRspec(numSender, linkCapacity):
     # receiver node
     rcvNode = request.RawPC("receiver")
     rcvNode.disk_image = img
+    rcvNode.installRootKeys(True,True)
     rcvNode.addService(pg.Install(url=repoURL, path=repoPath))
-    startupReceiver = "/local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_startup.sh"
+    startupReceiver = "/local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_startup.sh"
     rcvNode.addService(pg.Execute(shell="bash", command=startupReceiver))
 
     # set physical type of receiver node
