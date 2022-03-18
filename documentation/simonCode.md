@@ -5,7 +5,8 @@
     - matplotlib, pandas, colour, pyroute2
     - TODO: write requirements file
 3. Install all required system packages (apt-get):
-    - texlive-latex-recommended
+    ~~- texlive-latex-recommended~~
+    - texlive-latex-extra
     - cm-super
     - dvipng
 

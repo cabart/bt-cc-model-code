@@ -331,96 +331,6 @@ def parseTCPDumpMininet(datafiles, filedestination):
     df.to_csv(filedestination,index=False)
     print("parsed all tcpdump files to one file")
 
-    return
-    # timestamp, measuredon, src, dest, load, payload, udpno, seqno, ackno
-    more_output = False
-    data = []
-    data.append(['timestamp', 'measuredon', 'src', 'dest', 'load', 'payload', 'udpno', 'seqno', 'ackno', 'id'])
-    for dfname in datafiles:
-
-        measured_on = re.match(r'h(.+)-.*', dfname).group(1)
-        datafile = RESULT_FILE_PREFIX+datafolder+dfname
-        if more_output:
-            print("Parsing datafile "+datafile+"...")
-
-        wcOutput = str(subprocess.check_output(("wc -l "+datafile).split()))
-        filelength = int(re.match(r'b\'(\d+).+', wcOutput).group(1))
-        linecounter = 0
-
-        with open(datafile, 'r') as df:
-            linestring = '_'
-            while(linestring):
-                linestring = df.readline()
-                linecounter += 1
-
-                # Show progress
-                if more_output:
-                    if linecounter % 100000 == 0:
-                        print("Read %d / %d lines." % (linecounter, filelength), end="\r")
-
-                timestampMatcher = re.match(r'(\d+\.\d+).+\>.+', linestring)
-                packetsizeMatcher = re.match(r'.+,\slength\s(\S+):.+', linestring)
-
-                if (timestampMatcher and packetsizeMatcher): # If packet with timestamp and length:
-                    try:
-                        timestamp = timestampMatcher[1]
-                        load = packetsizeMatcher[1]
-                        id = int(re.match(r'.+,\sid\s(\d+).+', linestring).group(1))
-                        offset = re.match(r'.+offset\s(\d+),.+', linestring)
-                        if offset is None or int(offset.group(1)) != 0:
-                            print("WARNING: Offset is not 0! ", linestring) # If this happens, it's a sign of fragmentation,
-                                                                            # We should rethink the use of ID.
-                        linestring = df.readline() # Proceed to second line of packet
-                        linecounter += 1
-
-                        hostOriginMatch = re.match(r'.*10\.0\.\d\.(\d+)\.\S+\s\>', linestring)
-                        hostDestinationMatch = re.match(r'.+\>\s10\.0\.\d\.(\d+)\.\S+', linestring)
-                        source = hostOriginMatch[1]
-                        destination = hostDestinationMatch[1]
-                        payload = int(re.match(r'.+,\slength\s(\S+)', linestring).group(1))
-
-                        # Timeaggregation defines the granularity of the timestamps.
-                        # timestamp = float(('%.'+str(TIMEAGGREGATION)+'f') % float(timestamp)) # Timestamp resolution
-                        udpMatch = re.match(r'.+UDP.+', linestring)
-                        sequenceMatch = re.match(r'.+seq\s(\d+):\d+.+', linestring) # Only capture right part of seqno range
-                        # Assumption: only need right seqno. correct since iperf has consistent packet sizes.
-                        #seqenceMatch = re.match(r'.+seq\s(\d+):(\d+).+', linestring)
-                        ackedNrMatch = re.match(r'.+ack\s(\d+),.+', linestring)
-                        if sequenceMatch:
-                            seqno = int(sequenceMatch[1])
-                        else:
-                            seqno = -1
-                        if ackedNrMatch:
-                            ackno = ackedNrMatch[1]
-                        else:
-                            ackno = 0
-
-                        # Parsing hexdump, depending if UDP or not
-                        if udpMatch:
-                            linestring = df.readline()
-                            linestring = df.readline()  # Proceed to fourth line of packet
-                            linecounter += 2
-                            udpcMatch = re.match(r'\s*0x0010:\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(\S+)\s+(\S+)', linestring)
-                            udpno = int(udpcMatch[1] + udpcMatch[2], 16)
-                        else:
-                            udpno = -1
-                        if sequenceMatch and udpMatch:
-                            print("Sequence AND UDP. Weird!")
-
-                        line = [timestamp, measured_on, source, destination, load, payload, udpno, seqno, ackno, id]
-                        data.append(line)
-                    except:
-                        if re.match(r'.+ICMP.+', linestring) is not None:  # ICMP is ok.
-                            continue
-                        else: # Else: Print
-                            print("FAIL when parsing: ", linestring)
-            print("Read all %d lines.                     " % (filelength))
-
-        # Write compressed data to a csv file
-        np.savetxt(filedestination, np.array(data), delimiter=",", fmt='%s')
-
-
-
 
 #--------------------------------------------------------------------------------
 # Parse raw load data files
@@ -441,6 +351,7 @@ def parseCwndFiles(datafiles):
         ip = '10.0.0.'+hostNr
 
         datafile = RESULT_FILE_PREFIX+logfolder+df
+        more_output = True
         if more_output:
             print("Parsing datafile "+datafile+"...")
 
@@ -453,7 +364,7 @@ def parseCwndFiles(datafiles):
             while(linestring):
                 linestring = df.readline()
 
-                dataField = re.match(r'(\S+):.*cwnd:(\d+)', linestring)
+                dataField = re.match(r'(\S+)::.*cwnd:(\d+)', linestring)
 
                 if dataField:
                     timestamp = float(dataField.group(1))
@@ -461,7 +372,7 @@ def parseCwndFiles(datafiles):
                     cwndData[ip][timestamp] = length
                     continue
 
-                dataField = re.match(r'(\S+):.*unacked:(\d+)', linestring)
+                dataField = re.match(r'(\S+)::.*unacked:(\d+)', linestring)
 
                 if dataField:
                     timestamp = float(dataField.group(1))

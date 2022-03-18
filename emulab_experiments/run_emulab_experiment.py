@@ -23,6 +23,7 @@ from generateRspec import *
 from generateConfig import *
 from serverCommunication import *
 from emulabConnection import *
+from logparser import external_main as logparsermain
 
 import logging
 logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
@@ -305,7 +306,14 @@ def main(config_name, download):
             for dir_name, _, file_names in os.walk(result_folder):
                 for file_name in file_names:
                     os.chown(os.path.join(dir_name, file_name), os.stat('.').st_uid, os.stat('.').st_gid)
+            
+            if download:
+                logging.info("start local logparser")
+                logparsermain(exp_config["result_dir"])
+                logging.info("logparser finished")
+        logging.info("All runs completed")
 
+    logging.info("All parameter configurations done")
             
     # ---------------
     # Stop experiment and all connections
