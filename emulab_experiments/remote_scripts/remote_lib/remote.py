@@ -108,16 +108,24 @@ def measuredOnIndex():
         return str(getDeviceNumber())
 
 
-def ifaceNumberToDeviceNumber(ifaceNumber:int):
+def ifaceNumberToDeviceNumber(ifaceNumber,numSenders):
     '''
         Get last number of interface number. e.g. 10.0.0.x
         10.0.0.2 -> receiver
         10.0.0.x -> (x>2) senderY (Y == x-2)
+
+        Args:
+            ifaceNumber: should be an integer or string which can be converted to an integer
     '''
-    config = getConfig()
-    numSender = int(config["senders"])
+    if isinstance(ifaceNumber,str):
+        ifaceNumber = int(ifaceNumber)
+    elif not isinstance(ifaceNumber,int):
+        raise Exception("Should be either string or int")
+
+    #config = getConfig() # this is extremely slow, need to open file each time
+    #numSender = int(config["senders"])
     if ifaceNumber == 2:
-        return numSender + 1
+        return numSenders + 1
     elif ifaceNumber == 1:
         return -1
     else:

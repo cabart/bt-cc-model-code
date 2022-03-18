@@ -129,7 +129,7 @@ plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}' + '\n' + r'\usepac
 # 	0x0020:  5ede 45ed 0001 0a58 0000 0000 0000 0000
 # 	0x0030:  3031 3233 3435 3637 3839 3031 3233 3435
 
-def parseTCPDumpMininet(datafiles, filedestination):
+def parseTCPDumpMininet(datafiles, filedestination,numSenders):
     print("datafiles:",datafiles)
     print("filedestination:",filedestination)
     # timestamp, measuredon, src, dest, load, payload, udpno, seqno, ackno
@@ -209,12 +209,8 @@ def parseTCPDumpMininet(datafiles, filedestination):
                             print("Sequence AND UDP. Weird!")
 
                         # change source and destination numbers from interface number to actual device number
-                        print("iface source:",source,", type:",type(source))
-                        print("iface destination:",destination,", type:",type(source))
-                        source = remote.ifaceNumberToDeviceNumber(source)
-                        destination = remote.ifaceNumberToDeviceNumber(destination)
-                        print("correct source:",source,", type:",type(source))
-                        print("correct destination",destination,", type:",type(destination))
+                        source = remote.ifaceNumberToDeviceNumber(source,numSenders)
+                        destination = remote.ifaceNumberToDeviceNumber(destination,numSenders)
                         line = [timestamp, measured_on, source, destination, load, payload, udpno, seqno, ackno, id]
                         data.append(line)
                     except:
@@ -236,7 +232,7 @@ def calculateLoad(econfig):
     parsed_data = RESULT_FILE_PREFIX + condenseddatafolder + 'tcpdump' + hostname + '.csv'
     if not os.path.exists(parsed_data):
         datafiles = [f for f in os.listdir(RESULT_FILE_PREFIX + datafolder)]
-        parseTCPDumpMininet(datafiles, parsed_data)
+        parseTCPDumpMininet(datafiles, parsed_data,econfig["senders"])
 
 
 def main():
