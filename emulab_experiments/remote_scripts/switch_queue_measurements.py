@@ -46,7 +46,7 @@ def main():
             break
         if len(matches) == 1:
             print("Only one match found. Untypical")
-            output_file.write(("%.6f,%s" % (time.time(), str(matches[0]))))
+            output_file.write(("%.6f,%s\n" % (time.time(), str(matches[0]))))
         else:
             output_file.write("%.6f,%s,%s\n" % (time.time(), str(matches[0]), str(matches[1])))
         time.sleep(sample_period)
