@@ -19,9 +19,9 @@ import random
 from pexpect import pxssh
 import subprocess
 
-from emulab_experiments.create_rspec import *
-from emulab_experiments.generate_config import *
-from emulab_experiments.emulab_connection import *
+from create_rspec import *
+from generate_config import *
+from emulab_connection import *
 from logparser import external_main as logparsermain
 
 import logging
@@ -70,6 +70,17 @@ def disableIPv6(disable:bool,allSSH):
         logging.info("disable/enable ipv6 on " + k)
         v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_diable_ipv6.sh ' + val)
         v.prompt()
+        message = v.before.decode("utf-8")
+        logging.info("ipv6:" + str(message))
+
+
+def addBBR(senderSSH):
+    for k,v in senderSSH.items():
+        logging.info("enable bbr on " + k)
+        v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_add_bbr.sh')
+        v.prompt()
+        message = v.before.decode("utf-8")
+        logging.info("bbr output: " + str(message))
 
 
 def downloadFiles(addresses,sshKey,remoteFolder,localFolder):
@@ -202,6 +213,9 @@ def main(config_name, download):
     else:
         logging.error("Some ssh connections did not work!")
 
+    # Add BBR support for all sender nodes
+    addBBR(senderSSH)
+
     # ---------------
     # Start experiment with different parameter combinations
     # ---------------
@@ -215,7 +229,7 @@ def main(config_name, download):
 
         # TODO: test script on remote node first
         # enable/disable ipv6
-        #disableIPv6(exp_config["disable_ipv6"],allSSH)
+        disableIPv6(exp_config["disable_ipv6"],allSSH)
 
         # Do all runs for a specific configuration
         for i in range(config['experiment_parameters']['runs']):
