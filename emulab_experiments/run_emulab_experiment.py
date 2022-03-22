@@ -1,12 +1,12 @@
 """Creates a network of n sender nodes, one receiver node and one virtual switch inbetween to connect them.
 
 Instructions:
-Click on any node in the topology and choose the `shell` menu item. When your shell window appears, use `ping` to test the link.
+No instructions given since this rspec file is intended to be used for automated experiments using the emulab api.
 
 """
 #!/usr/bin/python3.8
 
-# Heavily based on Simons code
+# loosely based on Simons code
 # but aims for a clear distinction between config generation and experiment code
 
 import sys
@@ -19,10 +19,9 @@ import random
 from pexpect import pxssh
 import subprocess
 
-from generateRspec import *
-from generateConfig import *
-from serverCommunication import *
-from emulabConnection import *
+from emulab_experiments.create_rspec import *
+from emulab_experiments.generate_config import *
+from emulab_experiments.emulab_connection import *
 from logparser import external_main as logparsermain
 
 import logging
@@ -37,7 +36,9 @@ def sourceLatency(nSender, minLat, maxLat):
         lat.append(random_latency)
     return lat
 
+
 def setupInterfaces(start,senderSSH,recSSH,switchSSH):
+    logging.info("Setup interfaces")
     if start:
         flag = " -a"
         logging.info("Adding delay and capacity limits at all interfaces")
@@ -48,18 +49,28 @@ def setupInterfaces(start,senderSSH,recSSH,switchSSH):
     for k,v in senderSSH.items():
         v.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
         v.prompt()
-        #logging.info("setup interface at " + k + ":" + v.before.decode("utf-8"))
     
     recSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
     recSSH.prompt()
-    #logging.info("setup interface at receiver:" + recSSH.before.decode("utf-8"))
 
     switchSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_setup_links.py" + flag)
     switchSSH.prompt()
-    #logging.info("setup interface at switch:" + switchSSH.before.decode("utf-8"))
     logging.info("All interface setups done")
 
-    return
+
+def disableIPv6(disable:bool,allSSH):
+    if disable:
+        logging.info("disable ipv6")
+        val = "1"
+    else:
+        logging.info("enable ipv6")
+        val = "0"
+    
+    for k,v in allSSH.items():
+        logging.info("disable/enable ipv6 on " + k)
+        v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_diable_ipv6.sh ' + val)
+        v.prompt()
+
 
 def downloadFiles(addresses,sshKey,remoteFolder,localFolder):
     for k,v in addresses.items():
@@ -67,6 +78,7 @@ def downloadFiles(addresses,sshKey,remoteFolder,localFolder):
         if retCode:
             logging.warn("downlaoding of config file from " + k + " did not work")
             sys.exit(1)
+
 
 def main(config_name, download):
     logging.debug("Setting up configuration")
@@ -200,6 +212,10 @@ def main(config_name, download):
 
         # setup source latency ranges for this configuration
         senderLatencies = sourceLatency(exp_config['senders'],exp_config['source_latency_range'][0],exp_config['source_latency_range'][1])
+
+        # TODO: test script on remote node first
+        # enable/disable ipv6
+        #disableIPv6(exp_config["disable_ipv6"],allSSH)
 
         # Do all runs for a specific configuration
         for i in range(config['experiment_parameters']['runs']):

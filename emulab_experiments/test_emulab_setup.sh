@@ -3,8 +3,6 @@
 # Maybe should add option to see what went wrong
 echo "try connecting to server..."
 
-export OPENSSL_CONF=$(realpath ./local_ssl.cnf)
-
 # check for verbose flag
 while getopts ":v" opt; do
 	case $opt in
@@ -25,9 +23,9 @@ done
 
 if [ "$verbose" = true ]
 then
-	sudo -E ../env/bin/python ./serverCommunication.py
+	sudo ../env/bin/python ./serverCommunication.py
 else
-	sudo -E ../env/bin/python ./serverCommunication.py &> /dev/null
+	sudo ../env/bin/python ./serverCommunication.py &> /dev/null
 fi
 
 if [ $? -eq 0 ]; then

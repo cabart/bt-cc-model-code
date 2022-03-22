@@ -10,10 +10,9 @@
 # self.slice and self.sliver have always to be checked for (if not null or even better if they have expired)
 
 # possible additions:
-# - binding more users to a single slice
+# - binding more users to a single slice (not really neccessairy)
 # - RenewSlice at sa (extend expiration date)
 # - Check version 2 compatibility, also on server side
-# - do_method and do_method_retry mix should be avoided
 # - should ask user what to do if sliver already exists: take it or create new? (if new maybe have to wait until it is ready)
 
 from getpass import getpass

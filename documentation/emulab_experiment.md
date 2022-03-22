@@ -13,21 +13,24 @@ All configuration changes need to be made in [config file](../emulab_experiments
 
 Note: All paths in config file are relative pathes to 'home' path (also part of config file).
 
-~- SSL config file and Environment variable (will all be included in repository) + running python with 'Sudo -E'~ not used anymore
-
 ## Dependencies
+
+Install all dependencies by running the setup script:
+
+~~~bash
+sudo ./setup_environment.sh
+~~~
+
+Geni-lib library should work out of the box if it was installed as described in [README](../README.md).
 
 - Geni-lib library (directly from github, will be included in my repository) (since there seems to be no consistency in geni-libs documentation and versioning I prefer having a static version of it for every user)
 
-List of all additional software requirements:
+- python libraries (see [libraries](../requirements/requirements.txt))
 
-Currently none
-
-~~- openssl~~
-
-~~- realpath (e.g. for testing of serverconnection)~~
-
-not needed anymore
+- system packages (apt packages)
+  - texlive-latex-extra
+  - cm-super
+  - dvipng
 
 ## Pipeline of ./run.sh (and ./run_emulab_experiments.py)
 
@@ -41,7 +44,7 @@ not needed anymore
     - start receiving script on receiver
     - start sending script on sender
 5. Get data from experiment using scp
-    - save all data in results/\<config-name\>/emulab_experiments
+    - save all data in results/\<config-name\>/emulab_experiments/...
 6. Shutdown hardware (or repeat for multiple experiments)
 
 Program code:
@@ -50,32 +53,68 @@ Program code:
 2. Create emulab topology for all experiments -> limitations are stricter than for minilab experiments
     - different number of senders is critical
     - link capacity has to be set to maximum
-    - set link latency at start of individual experiment
-    - How to handle source_latency_range, qdisc, switch_buffer?
+    - set link latency at start of individual experiment (same for multiple runs of same configuration)
 
 ## Folder Structures
 
-### receiver
-
 ~~~bash
 /local
-  - cc-model-code-main?
+  - configs
+  - documentation
+  - emulab_experiments
+    - remote_scripts
+      - remote_lib
+  - env
+  - geni-lib
+  - requirements
   - results
-    - iperf_s_tcp.log | iperf_s_udp.log (or according to config)
-  receiver.log
+  - testing
 ~~~
 
-### senderX
+- configs
+  - includes all config files for different setups
+- documentation
+  - includes more detailed explenations about project
+- emulab_experiments
+  - includes all relevant scripts to run emulab experiments
+  - remote_scripts, includes all scripts running on any remote computer (sender, switch, receiver)
+- env
+  - python environment for experiment
+- geni-lib
+  - geni-lib library for generating rspec files (is a github repository itself)
+- requirements
+  - all python requirements
+- results
+  - where all experiment results are saved (if default config is not changed)
+  - does not exist if no experiment has been run yet
+- testing
+  - includes a couple of scripts for playing around, not used for actual experiment just for debugging
+  - may be removed in final product
+
+### result directory
 
 ~~~bash
-/local
-  - cc-model-code-main?
-  - results
-    - 
-  senderX.log
+/path/to/results/
+  - condensed
+  - hostdata
+  - hostlogs
+  - queue
 ~~~
+
+- condensed
+  - compressed versions of tcpdump files (one from every sender and receiver, plus one consisting of all data summarized in one file *tcpd_dataframe.csv*)
+- hostdata
+  - uncompressed tcpdump data (only available on remote nodes). These files are being compressed and minimized on remote nodes and sent to condensed folder of local experiment pc.
+- hostlogs
+  - All logging data from remote nodes. If there are errors on remote nodes they will be reported in this files. Also hold congestion window data from all nodes.
+- queue
+  - Holds data from switch queue measurements
 
 ## Some notes about send and receive node scripts
+
+Get the interface name on any node by using the information from */var/emulab/boot/ifmap* on any remote node.
+
+**Information below is a bit out of date:**
 
 Get the interface name for sending data into the experiment network
 
@@ -98,12 +137,13 @@ print(result)
 
 - send duration
 - number of sender
-- capacity
+- capacity of switch/receiver link (use same capacity on senderX/switch link to ensure bottleneck link is the switch/receiver link)
+- qdisc (queuing discipline)
 
 ### Per sender
 
 - latency
-- qdisc (queuing discipline)
+- congestion control algorithm
 - tso
 
 - mss
@@ -113,7 +153,6 @@ print(result)
 ## Questions
 
 - Which part of base_config is static?
-- How to get parameters onto each sender/receiver?
 
 ## Notes about server connection
 
@@ -139,8 +178,10 @@ ssh -p 22 \<user_name>@\<node-name>.\<sliver_name>.emulab-net.emulab.net
 
 For virtual machines: Use a specific port (given at runtime)
 
+*Exclusive virtual machines* can be viewed as regular nodes and communicated to using port 22!
+
 ~~Should try using the base-urn 'urn:publicid:IDN+emulab.net:\<project-name>' to test if easier ssh naming is enabled ('cabart@node.\<project-name>.\<experiment-name>.emulab.net)~~
 
 ## Problems
 
-- Certificates extension 'oid' does not work with newer versions of python cryptograpgy library, should investigate more and maybe ask emulab about it
+- Certificates extension 'oid' does not work with newer versions of python cryptography library, should investigate more and maybe ask emulab about it

@@ -22,17 +22,3 @@ OR use python venv:
 > source /path/to/env/bin/activate
 > python -m pip install \<library>
 > sudo /path/to/env/bin/python3 run_experiment.py configs/test_config.yml
-
-TODO: Maybe it is actually /path/to/env/bin. Test this!
-
-## Running Code
-
-tcpdump file is seemingly not saved correctly -> Error
-
-## Code Review
-
-- Why is the max_queue_size set as a property of the link and not as a part of the switch (respectively the network interface at the switch)?
-Shouldn't it be enough to specify the queue size directly in tc-netem?
-Same for qdisc (RED, drop-tail)
-
-- In Emulab latency can be set directly at link. Disadvantage: May not be changed during experiment.

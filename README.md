@@ -30,20 +30,26 @@ TODO: Test script if setup is working.
 ### Notes about setup
 
 - Uses a python virtual environment located in 'env/'
-- Uses geni-lib package located in 'geni-lib/'. This is a submodule and is directly cloned from https://gitlab.flux.utah.edu/emulab/geni-lib.git
+- Uses geni-lib package located in 'geni-lib/'. This is a submodule and is directly cloned from [geni-lib](https://gitlab.flux.utah.edu/emulab/geni-lib.git)
 
 The geni-lib package was installed in environment using the following command: '$> env/bin/python -m pip install -e ./geni-lib/'
 
 ## Documentation
 
-Documentation located at: [Documentation](documentation)
+see [Documentation](documentation).
 
 ## Running the experiment
 
-See [Emulab experiment documentation](documentation/emulabExperiment.md#prerequisites) before running it the first time
+See [Emulab experiment documentation](documentation/emulab_experiment.md#prerequisites) before running it the first time
 
 ~~~bash
-./run.sh -v
+./run.sh
+~~~
+
+Get more information about experiment options:
+
+~~~bash
+./run.sh -h
 ~~~
 
 ## Additional notes about the repository

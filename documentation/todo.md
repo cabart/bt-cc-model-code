@@ -10,15 +10,16 @@
 
 ## General
 
-- [ ] add logparser to run_emulab_experiment as it is working now
+- [x] add logparser to run_emulab_experiment as it is working now
 - [ ] check if results do make sense and compare them to mininet experiments
-- [ ] add ipv6 disabling (quite straigthforward)
-- [ ] add mention of installing apt-get packages (latex,...) in documentation and add install script (maybe add this to setup script)
+- [ ] add ipv6 disabling (quite straigthforward), how to enable it again afterwards? Is it enough to reset all values to 0?
+- [x] add mention of installing apt-get packages (latex,...) in documentation and add install script (maybe add this to setup script)
 - [ ] adapt general naming scheme of sender and receiver from 'senderX', 'receiver' to 'hX', 'hDest' (X starting from 1 instead of 0) to be more in line with Simons code. Beware of many files which have to be adapted and tested!
-- [ ] change serverCommunication.py to enable a clean shutdown of experiment (slice), add delete slice option
+- [ ] change emulab_connection.py to enable a clean shutdown of experiment (slice), add delete slice option
 - [ ] clean up code and naming conventions
 - [ ] adapt run_emulab_script, make it more functional and clear, add a connection class/object for all ssh connections and node names
 - [ ] could compress all files that are downloaded, this could lead to faster download times especially for large experiments with large bandwidth
+- [ ] Delete unneeded data after experiment to save disk space
 
 ## sender
 
@@ -35,6 +36,7 @@
 
 - [ ] add logging for switch_setup_link.py
 - [ ] weird queue measurements behavior discovered, sometimes only one backlog result (what is the reason for this?)
+- [ ] check ovs setup, maybe should add more dynamic behaviour regarding interface names (eth1,eth2,...) and use emulab setup files instead
 
 ## Errors
 

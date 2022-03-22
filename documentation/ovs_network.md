@@ -46,27 +46,21 @@ Switch setup is based on [OVS setup](https://groups.geni.net/geni/wiki/GENIExper
 
 If standalone mode is used, the virtual switch will setup its port forwarding table automatically. If 'secure' mode is used, a controller needs to be added to communicate with the virtual switch and to send the port forwarding table entries (should look into this).
 
-Is a controller neccessary for our type of network?
+For the simple setup of this experiment no controller is needed as the switch correctly sets up the network automatically
 
 ## Next Step: Automation
 
+A script doing the OVS setup as described above is started at startup of the switch node. For details see [startup code](/emulab_experiments/remote_scripts/switch_ovs_startup.sh)
 
 ## Notes
 
 To check if network setup is correct: Install nmap and do port search
 
-    nmap -sP 192.168.1.1/24
+        ~~~bash
+        nmap -sP 192.168.1.1/24
+        ~~~
 
 ---
 
-To test the network performance using iperf use the script in local/automation-tests/runExpssh.sh.
-This runs iperf on all sender nodes (more or less simultaneously).
-TODO: 
-
-- solve authentication key issue
-- parameterize for number of sender
-- parameterize for the experiment name
-
----
-
-ovs.addService(rspec.Execute(shell="bash", command="sudo %s" % GLOBALS.ovsscmd))
+~~To test the network performance using iperf use the script in local/automation-tests/runExpssh.sh.
+This runs iperf on all sender nodes (more or less simultaneously).~~
