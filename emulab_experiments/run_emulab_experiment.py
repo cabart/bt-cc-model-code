@@ -68,7 +68,7 @@ def disableIPv6(disable:bool,allSSH):
     
     for k,v in allSSH.items():
         logging.info("disable/enable ipv6 on " + k)
-        v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_diable_ipv6.sh ' + val)
+        v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_disable_ipv6.sh ' + val)
         v.prompt()
         message = v.before.decode("utf-8")
         logging.info("ipv6:" + str(message))
@@ -80,7 +80,10 @@ def addBBR(senderSSH):
         v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_add_bbr.sh')
         v.prompt()
         message = v.before.decode("utf-8")
-        logging.info("bbr output: " + str(message))
+    # only show output for last sender
+    pattern = re.compile("net.ipv4.tcp_available_congestion_control = (.+)\r")
+    matches = pattern.findall(message)[0].split()
+    logging.info("supported CCAs:" + str(matches))
 
 
 def downloadFiles(addresses,sshKey,remoteFolder,localFolder):

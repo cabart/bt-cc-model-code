@@ -273,7 +273,7 @@ class emulabConnection:
 
         # TODO maybe add option to increase expiration time
         # check if slice already exists
-        if self.lookupSlice(): return True
+        if self.lookupSlice(): return 2
 
         duration *= 60 * 60 # convert from hours to seconds
         validUntil = time.strftime("%Y%m%dT%H:%M:%S", time.gmtime(time.time() + duration))
@@ -289,13 +289,30 @@ class emulabConnection:
             logging.error("Could not create slice:")
             logging.error(str(rval))
             logging.error(str(response))
-            return False # or maybe raise exception
+            return 1 # or maybe raise exception
         else:
             self.slice = response["value"]
             logging.info("Slice successfully created")
             #logging.info("Slice created: " + str(myslice))
+            return 0
+
+
+    def renewSlice(self, duration):
+        expiration = time.strftime("%Y%m%dT%H:%M:%S",
+                            time.gmtime(time.time() + (60 * 60 * int(duration))))
+        params = {}
+        params["slice_urn"]   = self.sliceurn
+        params["credentials"] = (self.slice,)
+        params["expiration"] = expiration
+
+        rval,response = self.do_method_retry("sa", "RenewSlice", params)
+        if rval:
+            logging.error("Could not renew slice at the SA")
+            return False
+        else:
+            self.slice = response["value"]
+            logging.debug("Slice has been renewed")
             return True
-    
 
     def getSliceCredential(self):
         params = {}
@@ -460,7 +477,18 @@ class emulabConnection:
     def startExperiment(self, duration=4, rspec=None):
         # for testing only
         duration = 10 # TODO: Take this out later
-        self.createSlice(duration)
+        ret = self.createSlice(duration)
+        # check for expiration date, if it is smaller than duration extend it
+        if ret == 0:
+            logging.info("Creation successful")
+        elif ret == 1:
+            logging.info("Creation not successful")
+        elif ret == 2:
+            self.UpdateSliceInformation()
+            self.getSliceExpiration()
+            logging.info("Slice already exists, renew expiration date")
+            self.renewSlice(duration)
+            self.getSliceExpiration()
         self.createSliver(rspec)
 
         if self.sliverWaitUntilReady():
@@ -472,7 +500,6 @@ class emulabConnection:
 
 
     def stopExperiment(self):
-        # TODO: Should also delete slice, otherwise problems might come up for multiple successive experiments
         return self.deleteSliver()
 
     # Actually not needed, since exclusive VMs get their own address and are accessible through port 22
@@ -507,7 +534,15 @@ class emulabConnection:
             else:
                 logging.info("One VM port found:" + str(result[0]))
             return result
+    
 
+    def getSliceExpiration(self):
+        if self.slice is None:
+            logging.error("No slice information available")
+        else:
+            pattern = re.compile("<expires>(.+)</expires>")
+            matches = pattern.findall(self.slice)
+            logging.info("Expiration time " + str(matches))
 
 
 if __name__ == "__main__":
@@ -535,36 +570,50 @@ if __name__ == "__main__":
     #    logging.info("Did get credentials")
         #print(cred)
 
-    logging.info("Test for slice creation")
-    worked = emuConn.createSlice(duration=1)
-    if worked:
-        logging.info("Successfully created slice")
-    else:
-        logging.info("Could not create slice")
+    #logging.info("Test for slice creation")
+    #worked = emuConn.createSlice(duration=1)
+    #if worked:
+    #    logging.info("Successfully created slice")
+    #else:
+    #    logging.info("Could not create slice")
 
-    logging.info("Test for sliver creation")
-    worked = emuConn.createSliver()
-    if worked:
-        logging.info("Successfully created sliver")
-    else:
-        logging.info("Could not create sliver")
+    #logging.info("Test for sliver creation")
+    #worked = emuConn.createSliver()
+    #if worked:
+    #    logging.info("Successfully created sliver")
+    #else:
+    #    logging.info("Could not create sliver")
 
-
-    logging.info("Wait for experiment to get ready")
-    
-    ready = emuConn.sliverWaitUntilReady()
+    ready = emuConn.startExperiment()
     if ready:
         logging.info("experiment is now ready")
     else:
-        logging.error("Sliver still not ready, maybe broken: abort")
+        logging.info("something went wrong")
+
+    time.sleep(5)
+    
+    stopped = emuConn.stopExperiment()
+    if stopped:
+        logging.info("experiment has been stopped")
+    else:
+        logging.info("something went wrong")
+
+
+    #logging.info("Wait for experiment to get ready")
+    
+    #ready = emuConn.sliverWaitUntilReady()
+    #if ready:
+    #    logging.info("experiment is now ready")
+    #else:
+    #    logging.error("Sliver still not ready, maybe broken: abort")
 
     
 
-    time.sleep(60)
+    #time.sleep(60)
 
-    logging.info("Test for sliver deletion")
-    worked = emuConn.deleteSliver()
-    if worked:
-        logging.info("Successfully deleted sliver")
-    else:
-        logging.info("Could not delete sliver")
+    #logging.info("Test for sliver deletion")
+    #worked = emuConn.deleteSliver()
+    #if worked:
+    #    logging.info("Successfully deleted sliver")
+    #else:
+    #    logging.info("Could not delete sliver")
