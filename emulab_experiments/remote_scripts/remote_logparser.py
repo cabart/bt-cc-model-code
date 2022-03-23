@@ -8,16 +8,10 @@
 
 # sudo rm results/25/2/200/100/cubic/TCP-1_STABLE-1/2020-05-01--15-54-30/condensed/*
 
-from datetime import datetime, timezone
 import os
-import sys
 import re
 import subprocess
-import math
-import json
-import pandas as pd
 import matplotlib.pyplot as plt
-import yaml
 import numpy as np
 from remote_lib import remote
 #from mininet_experiments.plotting import *
@@ -27,6 +21,15 @@ from remote_lib import remote
 
 
 import pprint
+
+import logging
+logging.basicConfig(
+    filename='/local/node.log',
+    filemode='a',
+    format='%(asctime)s:: %(levelname)s:: %(message)s',
+    datefmt="%H:%M:%S",
+    level=logging.INFO
+    )
 
 # Notes:
 # Now the statistics are gathered when processing the raw data.
@@ -132,6 +135,7 @@ plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}' + '\n' + r'\usepac
 def parseTCPDumpMininet(datafiles, filedestination,numSenders):
     print("datafiles:",datafiles)
     print("filedestination:",filedestination)
+    logging.info("file destination: " + filedestination)
     # timestamp, measuredon, src, dest, load, payload, udpno, seqno, ackno
     more_output = True
     data = []
@@ -222,6 +226,15 @@ def parseTCPDumpMininet(datafiles, filedestination,numSenders):
 
         # Write compressed data to a csv file
         np.savetxt(filedestination, np.array(data), delimiter=",", fmt='%s')
+
+        # create compressed archive
+        returnCode = subprocess.call(("sudo tar cf " + filedestination + ".tar " + filedestination).split())
+        logging.info("return code of tar compression: " + str(returnCode))
+
+        # remove uncompressed csv data
+        returnCode = subprocess.call(("sudo rm " + filedestination).split())
+        logging.info("return code of rm: " + str(returnCode))
+
 
 
 #--------------------------------------------------------------------------------
