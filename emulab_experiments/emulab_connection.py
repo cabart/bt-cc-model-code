@@ -271,12 +271,11 @@ class emulabConnection:
             duration -- time until experiation of slice/experiment given in hours 
         """
 
-        # TODO maybe add option to increase expiration time
         # check if slice already exists
         if self.lookupSlice(): return 2
 
         duration *= 60 * 60 # convert from hours to seconds
-        validUntil = time.strftime("%Y%m%dT%H:%M:%S", time.gmtime(time.time() + duration))
+        validUntil = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + duration))
 
         params = {}
         params["credential"] = self.cred
@@ -297,9 +296,9 @@ class emulabConnection:
             return 0
 
 
-    def renewSlice(self, duration):
-        expiration = time.strftime("%Y%m%dT%H:%M:%S",
-                            time.gmtime(time.time() + (60 * 60 * int(duration))))
+    def renewSlice(self, expiration:str):
+        '''Takes the expiration time as string'''
+
         params = {}
         params["slice_urn"]   = self.sliceurn
         params["credentials"] = (self.slice,)
@@ -476,7 +475,7 @@ class emulabConnection:
         
     def startExperiment(self, duration=4, rspec=None):
         # for testing only
-        duration = 10 # TODO: Take this out later
+        #duration = 10 # TODO: Take this out later
         ret = self.createSlice(duration)
         # check for expiration date, if it is smaller than duration extend it
         if ret == 0:
@@ -484,11 +483,25 @@ class emulabConnection:
         elif ret == 1:
             logging.info("Creation not successful")
         elif ret == 2:
-            self.UpdateSliceInformation()
-            self.getSliceExpiration()
             logging.info("Slice already exists, renew expiration date")
-            self.renewSlice(duration)
-            self.getSliceExpiration()
+            self.UpdateSliceInformation()
+            # get current slice expiration
+            oldExpT = self.getSliceExpiration()
+            # create new slice expiration
+            newExpT = time.gmtime(time.time() + duration * 60 * 60)
+            # check if old expiration time already exceeds new expiration time
+            diff = time.mktime(newExpT) - time.mktime(oldExpT)
+
+            logging.info("old expiration time: " + str(oldExpT))
+            logging.info("new expiration time: " + str(newExpT))
+            logging.info("difference between old and new expiration time: " + str(diff))
+            if diff > 0:
+                logging.info("need to extend slice expiration time")
+                worked = self.renewSlice(time.strftime("%Y-%m-%dT%H:%M:%SZ",newExpT))
+                if not worked: logging.error("error occured when extending slice expiration time")
+            else:
+                logging.info("slice expiration time is longer than needed. Don't extend time")
+            
         self.createSliver(rspec)
 
         if self.sliverWaitUntilReady():
@@ -537,12 +550,20 @@ class emulabConnection:
     
 
     def getSliceExpiration(self):
+        '''Returns struct_time object'''
         if self.slice is None:
             logging.error("No slice information available")
         else:
-            pattern = re.compile("<expires>(.+)</expires>")
-            matches = pattern.findall(self.slice)
-            logging.info("Expiration time " + str(matches))
+            try:
+                pattern = re.compile("<expires>(.+)</expires>")
+                expT = (pattern.findall(self.slice))[0]
+                logging.info("Expiration time " + expT)
+                t = time.strptime(expT,"%Y-%m-%dT%H:%M:%SZ")
+                return t
+            except Exception as e:
+                logging.error(str(e))
+                return None
+
 
 
 if __name__ == "__main__":

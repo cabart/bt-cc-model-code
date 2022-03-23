@@ -15,7 +15,7 @@
 - [x] add ipv6 disabling (quite straigthforward), how to enable it again afterwards? Is it enough to reset all values to 0?
 - [x] add mention of installing apt-get packages (latex,...) in documentation and add install script (maybe add this to setup script)
 - [ ] adapt general naming scheme of sender and receiver from 'senderX', 'receiver' to 'hX', 'hDest' (X starting from 1 instead of 0) to be more in line with Simons code. Beware of many files which have to be adapted and tested!
-- [ ] change emulab_connection.py to renew slice for multiple successive experiments on one day (otherwise slice may expire during experiment)
+- [x] change emulab_connection.py to renew slice for multiple successive experiments on one day (otherwise slice may expire during experiment)
 - [ ] clean up code and naming conventions
 - [ ] adapt run_emulab_script, make it more functional and clear, add a connection class/object for all ssh connections and node names
 - [ ] could compress all files that are downloaded, this could lead to faster download times especially for large experiments with large bandwidth
@@ -40,4 +40,4 @@
 
 ## Errors
 
-- [ ] https://gitlab.inf.ethz.ch/simonsch/cc-de-models/-/blob/master/mininet_experiments/ccexperiment.py#L64 should have brackets for arguments
+- [ ] 'https://gitlab.inf.ethz.ch/simonsch/cc-de-models/-/blob/master/mininet_experiments/ccexperiment.py#L64' should have brackets for arguments

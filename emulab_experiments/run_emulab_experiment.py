@@ -148,7 +148,8 @@ def main(config_name, download):
     rspec = createUnboundRspec(maxSender, maxCapacity)
 
     # start experiment hardware and wait until ready
-    if emuServer.startExperiment(duration=1, rspec=rspec):
+    # TODO: adapt experiment duration to number of configs and runs
+    if emuServer.startExperiment(duration=2, rspec=rspec):
         logging.info("Experiment is ready\n")
     else:
         logging.info("Experiment is not ready, timeout maybe too low or there was an error when starting up")
