@@ -228,7 +228,9 @@ def parseTCPDumpMininet(datafiles, filedestination,numSenders):
         np.savetxt(filedestination, np.array(data), delimiter=",", fmt='%s')
 
         # create compressed archive
-        returnCode = subprocess.call(("sudo tar cf " + filedestination + ".tar " + filedestination).split())
+        dir = os.path.dirname(filedestination)
+        logging.info("dir: " + dir)
+        returnCode = subprocess.call(("sudo tar cf " + filedestination + ".tar " + filedestination + "-C " + dir).split())
         logging.info("return code of tar compression: " + str(returnCode))
 
         # remove uncompressed csv data
