@@ -80,6 +80,9 @@ def main():
     source_latency_range = config["source_latency_range"]
     use_red = config["use_red"]
 
+    bufferFactor = config["switch_buffer"]
+    bw_delay_product = config["inferred"]["bw_delay_product"]
+
     if args.a:
         # add interfaces
 

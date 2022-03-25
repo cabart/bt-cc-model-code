@@ -144,7 +144,7 @@ send_behavior_parsing:
     OSCILLATION: udp-oscillation
     CUBIC: tcp-cubic
     CUBICPACED: tcp-cubic-paced
-    BBR: tcp-bbrsimon
+    BBR: tcp-bbr
     BBR2: tcp-bbr2 #simon
     RENO: tcp-reno
 

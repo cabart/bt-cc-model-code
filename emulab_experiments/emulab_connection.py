@@ -565,6 +565,9 @@ class emulabConnection:
                 return None
 
 
+    def getManifest(self):
+        return self.slice, self.sliver, self.manifest
+
 
 if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
