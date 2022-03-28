@@ -67,30 +67,31 @@ def disableIPv6(disable:bool,allSSH):
         val = "0"
     
     for k,v in allSSH.items():
-        logging.info("disable/enable ipv6 on " + k)
+        logging.debug("disable/enable ipv6 on " + k)
         v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_disable_ipv6.sh ' + val)
         v.prompt()
         message = v.before.decode("utf-8")
-        logging.info("ipv6:" + str(message))
+        logging.debug("ipv6:" + str(message))
 
 
 def addBBR(senderSSH):
+    logging.info("enable bbr on all senders")
     for k,v in senderSSH.items():
-        logging.info("enable bbr on " + k)
+        logging.debug("enable bbr on " + k)
         v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_add_bbr.sh')
         v.prompt()
         message = v.before.decode("utf-8")
     # only show output for last sender
     pattern = re.compile("net.ipv4.tcp_available_congestion_control = (.+)\r")
     matches = pattern.findall(message)[0].split()
-    logging.info("supported CCAs:" + str(matches))
+    logging.info("supported CCAs on sender nodes: " + str(matches))
 
 
 def downloadFiles(addresses,sshKey,remoteFolder,localFolder):
     for k,v in addresses.items():
         retCode = subprocess.call(["scp","-r","-P","22","-i",sshKey,v+":"+remoteFolder,localFolder])
         if retCode:
-            logging.warn("downlaoding of config file from " + k + " did not work")
+            logging.warning("downlaoding of config file from " + k + " did not work")
             sys.exit(1)
 
 
@@ -149,7 +150,7 @@ def main(config_name, download):
 
     # start experiment hardware and wait until ready
     # TODO: adapt experiment duration to number of configs and runs
-    if emuServer.startExperiment(duration=2, rspec=rspec):
+    if emuServer.startExperiment(duration=4, rspec=rspec):
         logging.info("Experiment is ready\n")
     else:
         logging.info("Experiment is not ready, timeout maybe too low or there was an error when starting up")
@@ -219,6 +220,17 @@ def main(config_name, download):
 
     # Add BBR support for all sender nodes
     addBBR(senderSSH)
+
+    # Get information about hardware
+    types = emuServer.getPCTypes()
+    logging.info(str(types))
+
+    # test unlimited bandwidth with one host
+    logging.info("test theoretical bandwidth of connection")
+    recSSH.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_test_bandwidth.py')
+    _,b = senderSSH[0]
+    b.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_test_bandwidth.py')
+    logging.info("Test done")
 
     # ---------------
     # Start experiment with different parameter combinations
@@ -332,19 +344,36 @@ def main(config_name, download):
                 downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
 
                 logging.info("Download completed")
+
+                logging.info("uncompress tcpdump files...")
+                condensedFolder = os.path.join(baseLocalFolder,"condensed/")
+                logging.info("condensedFolder: " + condensedFolder)
+                cmd = "cat " + condensedFolder + "*.tar | sudo tar -xvf - -i --directory " + condensedFolder
+                output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                logging.info("uncompressed: " + output)
+
+                logging.info("remove compressed data")
+                cmd = "find " + condensedFolder + "* -name '*.tar' -print | xargs sudo rm"
+                output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                logging.info("removing of compressed files: " + output)
+
                 logging.info("Find results of this run in: " + baseLocalFolder)
+                
+                logging.info("start local logparser")
+                logparsermain(exp_config["result_dir"])
+                logging.info("logparser finished")
+
+                logging.info("remove condensed data files")
+                cmd = "find " + condensedFolder + "* -name '*.csv' -print | xargs sudo rm"
+                output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                logging.info("removed condensed data files: " + output)
             else:
                 logging.info("Set flag to not download files")
-
 
             for dir_name, _, file_names in os.walk(result_folder):
                 for file_name in file_names:
                     os.chown(os.path.join(dir_name, file_name), os.stat('.').st_uid, os.stat('.').st_gid)
-            
-            if download:
-                logging.info("start local logparser")
-                logparsermain(exp_config["result_dir"])
-                logging.info("logparser finished")
+                
         logging.info("All runs completed")
 
     logging.info("All parameter configurations done")
@@ -370,7 +399,7 @@ def main(config_name, download):
             logging.info("Do not stop hardware, may use up unneccessary hardware resources at emulab site")
             break
         else:
-            logging.warn("invalid input")
+            logging.warning("invalid input")
     logging.info("All done.")
 
 

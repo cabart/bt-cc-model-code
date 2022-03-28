@@ -566,7 +566,36 @@ class emulabConnection:
 
 
     def getManifest(self):
-        return self.slice, self.sliver, self.manifest
+        if self.lookupSliver():
+            return self.manifest
+        else:
+            return None
+    
+
+    def getPCs(self):
+        if self.lookupSliver():
+            manifest = self.manifest
+            pcs = []
+            for line in manifest.splitlines():
+                output = re.match(r'.*hardware_type="(\S+)".* name="(\S+)"',line)
+                if output is not None:
+                    name = re.match(r'[^.]*',output.group(2))[0]
+                    pcType = output.group(1)
+                    pcs.append((name,pcType))
+            return pcs
+        else:
+            return []
+
+
+    def getPCTypes(self):
+        pcs = self.getPCs()
+        types = set()
+        for name,pctype in pcs:
+            if pctype != "pcvm":
+                types.add(pctype)
+        return types
+
+            
 
 
 if __name__ == "__main__":
