@@ -95,7 +95,26 @@ def downloadFiles(addresses,sshKey,remoteFolder,localFolder):
             sys.exit(1)
 
 
-def main(config_name, download):
+def checkUserInput(inp:str):
+    '''
+        Use this wrapper to get yes/no answers from user
+
+        Args:
+            inp: User input string 
+        
+        Returns:
+            Returns a Boolean if yes or no was given.
+            Otherwise returns a None object
+    '''
+    if inp == "y" or inp == "yes" or inp == "Y" or input == "Yes":
+        return True
+    elif inp == "n" or inp == "no" or inp == "N" or inp == "No":
+        return False
+    else:
+        return None
+
+
+def main(config_name, download, yesFlag):
     logging.debug("Setting up configuration")
 
     config = get_config(config_name)
@@ -116,8 +135,6 @@ def main(config_name, download):
     with open(config['emulab_parameters']['base_config'], 'r') as base_config_file:
         base_config = yaml.safe_load(base_config_file)
 
-    logging.info("Number of combinations: " + str(len(config['param_combinations'])))
-
     # ------------------------
     # Do emulab setup for all experiments
     # ------------------------
@@ -132,12 +149,32 @@ def main(config_name, download):
         c = pc_map['link_capacity']
         if c > maxCapacity:
             maxCapacity = c
-    logging.info("Max #sender in experiment: " + str(maxSender))
-    logging.info("Max capacity in experiment: " + str(maxCapacity))
 
-    # Create emulab connection object
+    # get emulab config
     emulab_config = get_emulab_config("emulab_experiments/emulab_config.yaml")
     experiment_name = "emulab-experiment"
+
+    # ask user if config is correct
+    logging.info("Experiment config:\n\tConfig name: {}\n\t#Combinations: {}\n\t#Senders (max): {}\n\t#bandwidth (max): {}\n\t#Runs per configuration: {}".format(
+        config_name, str(len(config['param_combinations'])), str(maxSender), str(maxCapacity), str(config['experiment_parameters']['runs'])
+        )
+    )
+    while not yesFlag:
+        #logging.info("Experiment config:\n\tConfig name: " + config_name + "\n\t#Combinations: " + str(len(config['param_combinations'])) + "\n\t#Senders (max): " + str(maxSender) + "\n\t#bandwidth (max): " + str(maxCapacity) + "\n\t#Runs per configuration: " + str(config['experiment_parameters']['runs']))
+        inp = input("Do you want to run this experiment config?\n [y/n]:") 
+        ret = checkUserInput(inp)
+        if ret is None:
+            continue
+        elif ret:
+            logging.info("Start experiment...")
+            break
+        elif not ret:
+            logging.info("Experiment is not being started")
+            sys.exit(1)
+        else:
+            logging.warning("invalid input")
+
+    # Create emulab connection object
     try:
         emuServer = emulabConnection(emulab_config["username"],emulab_config["home"],emulab_config["certificate_location"],emulab_config["password_location"],experiment_name=experiment_name)
     except InitializeError as e:
@@ -223,14 +260,19 @@ def main(config_name, download):
 
     # Get information about hardware
     types = emuServer.getPCTypes()
-    logging.info(str(types))
+    logging.info('used pc types in this experiment' + str(types))
 
     # test unlimited bandwidth with one host
-    logging.info("test theoretical bandwidth of connection")
+    logging.info("test theoretical bandwidth of connection...")
     recSSH.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_test_bandwidth.py')
-    _,b = senderSSH[0]
-    b.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_test_bandwidth.py')
+    someSender = list(senderSSH.items())[0][1]
+    someSender.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_test_bandwidth.py')
+    recSSH.prompt()
+    someSender.prompt()
     logging.info("Test done")
+    bandwidth = someSender.before.decode('utf-8')
+    bandwidth = re.findall(r'bandwidth: (\d+)',bandwidth)[0] + " Mbit/s"
+    logging.info("max bandwidth with one sender with this setup: " + bandwidth)
 
     # ---------------
     # Start experiment with different parameter combinations
@@ -278,15 +320,19 @@ def main(config_name, download):
 
             extendedPid = pidPattern.findall(response)[0]
             pid_queue = number.findall(extendedPid)[1]
-            logging.info("Started queue measurement with process id : " + pid_queue)
+            logging.info("Started queue measurement")
+            logging.debug("Process id of queue measurement: {}".format(pid_queue))
             
             # Start 'receiver node' measurements
+            logging.info("Start sender and receiver measuremnts")
             recSSH.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_measurements.sh")
             
             time.sleep(1) # make sure the server is running on receiver node
             # Start 'sender nodes' measurements
             for k,v in senderSSH.items():
                 v.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_measurements.sh")
+            
+            logging.info("Wait for at least {} seconds for measurements to complete".format(exp_config["send_duration"]))
             
             # receive answers
             for k,v in senderSSH.items():
@@ -388,18 +434,20 @@ def main(config_name, download):
 
     # terminate experiment
     logging.info("All experiments done")
-    while True:
-        inp = input("Do you want to shutdown emulab hardware? [y/n]:") 
-        if inp == "y" or inp == "yes" or inp == "Y" or input == "Yes":
+    while not yesFlag:
+        inp = input("Do you want to shutdown emulab hardware? [y/n]:")
+        ret = checkUserInput(inp)
+        if ret is None:
+            logging.warning("invalid input")
+            continue
+        elif ret:
             logging.info("Stop hardware")
             emuServer.stopExperiment()
             logging.info("Hardware has been stopped")
             break
-        elif inp == "n" or inp == "no" or inp == "N" or inp == "No":
+        elif not ret:
             logging.info("Do not stop hardware, may use up unneccessary hardware resources at emulab site")
             break
-        else:
-            logging.warning("invalid input")
     logging.info("All done.")
 
 
@@ -408,6 +456,7 @@ if __name__ == "__main__":
     parser.add_argument("-v","--verbosity",action="store_true",default=False,help="show debug output")
     parser.add_argument("-c","--config",type=str,default="./configs/test_config.yml", help="path to your config file")
     parser.add_argument("-d","--download",action="store_true",default=False,help="don't download results (for testing only)")
+    parser.add_argument("-y","--yes",action="store_true",default=False,help="start and stop hardware automatically without asking")
     args = parser.parse_args()
 
     if args.verbosity:
@@ -419,5 +468,5 @@ if __name__ == "__main__":
         logging.info("File does not exist or path is wrong")
         sys.exit(1)
     else:
-        main(args.config, not args.download)
+        main(args.config, not args.download, args.yes)
 
