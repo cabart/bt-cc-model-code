@@ -91,13 +91,14 @@ def udp_oscillation_command(currPath, IPNum, desthostID):
 def run(behavior_index, desthostID, config):
     global INTERFACE
     INTERFACE = getInterface()
+    behavior_index -= 1 # starting from zero index for lists
 
     print(config['sending_behavior'][behavior_index].keys())
     hostID, behavior = [(i, j) for i, j in config['sending_behavior'][behavior_index].items()][0]
     IPNum = behavior_index + 3 # TODO: Check this
 
-    logging.info("Started sending log of sender" + str(behavior_index))
-    logging.info(">> " + str(desthostID))
+    logging.info("Started sending log of sender" + str(behavior_index + 1))
+    logging.info(">> 10.0.0." + str(desthostID))
     announceYourself(hostID, desthostID)
     startTcpDump(hostID)
     random.seed(hostID) # what is this used for?
@@ -143,7 +144,7 @@ def run(behavior_index, desthostID, config):
     #iperfoutputfile = (config['result_dir'] + "hostlogs/" + config['iperf_outfile_client']).replace("$", str(IPNum))
     path = os.path.join(RESULT_DIR, "hostlogs/")
     path = os.path.join(path, config['iperf_outfile_client'])
-    iperfoutputfile = (path).replace("$", str(behavior_index))
+    iperfoutputfile = (path).replace("$", str(behavior_index+1))
     fout = open(iperfoutputfile, 'w')
 
     time.sleep(2)
