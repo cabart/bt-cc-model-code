@@ -105,7 +105,7 @@ def main():
 
     elif args.d:
         if source_latency:
-            removeSendersLimits()
+            removeSendersLimits(config["sending_behavior"])
         removeReceiverLimits()
     else:
         parser.print_help()
