@@ -114,7 +114,7 @@ def checkUserInput(inp:str):
         return None
 
 
-def main(config_name, download, yesFlag):
+def main(config_name, download, yesFlag, noexperimentFlag):
     logging.debug("Setting up configuration")
 
     config = get_config(config_name)
@@ -231,7 +231,7 @@ def main(config_name, download, yesFlag):
 
     # create a dictionary for all nodes
     allSSH = senderSSH.copy()
-    allSSH.update({"receiver": recSSH, "switch": switchSSH})
+    allSSH.update({"hDest": recSSH, "switch": switchSSH})
     logging.debug("all ssh connections: " + str(allSSH))
 
     # all addresses for scp use
@@ -277,152 +277,154 @@ def main(config_name, download, yesFlag):
     # ---------------
     # Start experiment with different parameter combinations
     # ---------------
-    for pc_map in config['param_combinations']:
-        # create configuration file for experiment
-        exp_config = config_edited_copy(base_config, custom=pc_map)
-        exp_config['base_res_dir'] = result_folder # same for all parameter configuration and runs
+    if not noexperimentFlag:
+        for pc_map in config['param_combinations']:
+            # create configuration file for experiment
+            exp_config = config_edited_copy(base_config, custom=pc_map)
+            exp_config['base_res_dir'] = result_folder # same for all parameter configuration and runs
 
-        # setup source latency ranges for this configuration
-        senderLatencies = sourceLatency(exp_config['senders'],exp_config['source_latency_range'][0],exp_config['source_latency_range'][1])
+            # setup source latency ranges for this configuration
+            senderLatencies = sourceLatency(exp_config['senders'],exp_config['source_latency_range'][0],exp_config['source_latency_range'][1])
 
-        # TODO: test script on remote node first
-        # enable/disable ipv6
-        disableIPv6(exp_config["disable_ipv6"],allSSH)
+            # TODO: test script on remote node first
+            # enable/disable ipv6
+            disableIPv6(exp_config["disable_ipv6"],allSSH)
 
-        # Do all runs for a specific configuration
-        for i in range(config['experiment_parameters']['runs']):
-            # Do a single run of a parameter combination
-            logging.info("Run " + str(i+1) + " / " + str(config['experiment_parameters']['runs']))
-            exp_config = setup_configuration(exp_config, senderLatencies) # needs to be done every run
+            # Do all runs for a specific configuration
+            for i in range(config['experiment_parameters']['runs']):
+                # Do a single run of a parameter combination
+                logging.info("Run " + str(i+1) + " / " + str(config['experiment_parameters']['runs']))
+                exp_config = setup_configuration(exp_config, senderLatencies) # needs to be done every run
 
-            # send config file to all nodes
-            file = os.path.join(os.getcwd(),exp_config["result_dir"])
-            file = os.path.join(file,"config.yaml")
-            for k,v in allAddresses.items():
-                retCode = subprocess.call(["scp","-P","22","-i",sshKey,file,v+":/local/config.yaml"])
-                if retCode:
-                    logging.error("Uploading of config file to " + k + " did not work")
-                    sys.exit(1)
-            logging.info("Experiment config successfully uploaded to every experiment node")
-        
-            # Setup interfaces at senders, switch and receiver
-            setupInterfaces(True,senderSSH,recSSH,switchSSH)
+                # send config file to all nodes
+                file = os.path.join(os.getcwd(),exp_config["result_dir"])
+                file = os.path.join(file,"config.yaml")
+                for k,v in allAddresses.items():
+                    retCode = subprocess.call(["scp","-P","22","-i",sshKey,file,v+":/local/config.yaml"])
+                    if retCode:
+                        logging.error("Uploading of config file to " + k + " did not work")
+                        sys.exit(1)
+                logging.info("Experiment config successfully uploaded to every experiment node")
             
-            logging.info("start measuring on switch, sender and receiver")
-
-            # Start switch measurements
-            switchSSH.sendline("nohup python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_queue_measurements.py &")
-            switchSSH.prompt()            
-            response = switchSSH.before.decode("utf-8")
-
-            pidPattern = re.compile("\[[0-9]+\] [0-9]+")
-            number = re.compile("[0-9]+")
-
-            extendedPid = pidPattern.findall(response)[0]
-            pid_queue = number.findall(extendedPid)[1]
-            logging.info("Started queue measurement")
-            logging.debug("Process id of queue measurement: {}".format(pid_queue))
-            
-            # Start 'receiver node' measurements
-            logging.info("Start sender and receiver measuremnts")
-            recSSH.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_measurements.sh")
-            
-            time.sleep(1) # make sure the server is running on receiver node
-            # Start 'sender nodes' measurements
-            for k,v in senderSSH.items():
-                v.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_measurements.sh")
-            
-            logging.info("Wait for at least {} seconds for measurements to complete".format(exp_config["send_duration"]))
-            
-            # receive answers
-            for k,v in senderSSH.items():
-                v.prompt()
-                logging.debug("started " + k + ": " + str(v.before.decode("utf-8")))
-
-            recSSH.prompt()
-            logging.debug("started receiver: " + str(recSSH.before.decode("utf-8")))
-
-            # end all tcpdump measurements
-            for k,v in allSSH.items():
-                logging.info("end tcpdump on " + k)
-                v.sendline('sudo pkill -SIGTERM -f tcpdump')
-                v.prompt()
-            
-            switchSSH.sendline("sudo kill -SIGTERM " + pid_queue)
-            switchSSH.prompt()
-            logging.info("Stopped queue measurement: " + switchSSH.before.decode("utf-8"))
-
-            logging.info("Finished all measurements")
-            
-            # remove interfaces at senders, switch, receiver
-            # could be done only once for every parameter configuration, but we always
-            # want fastest speeds possible for transferring data to receiver node
-            setupInterfaces(False,senderSSH,recSSH,switchSSH)
-
-            # create condensed tcpdump files on remote nodes
-            logging.info("start creating condensed tcpdump files")
-            for k,v in allSSH.items():
-                if k == "switch": continue
-                v.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/remote_logparser.py")
-                v.prompt()
-                logging.info("created condensed tcpdump file on " + k)
-            logging.info("finished all condensed remote tcpdump files")
-
-            # download condensed folder files and queue measurements
-            if download:
-                logging.info("start getting all measurement data from server")
-                baseRemoteFolder = os.path.join("/local",exp_config["result_dir"])
-                baseLocalFolder = os.path.join(os.getcwd(),exp_config["result_dir"])
-
-                # download condensed files
-                remoteFolder = os.path.join(baseRemoteFolder,"condensed/")
-                #localFolder = os.path.join(baseLocalFolder,"condensed/")
-                downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
-
-                # download logfiles
-                remoteFolder = os.path.join(baseRemoteFolder,"hostlogs/")
-                #localFolder = os.path.join(baseLocalFolder,"hostlogs/")
-                downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
-
-                # download queue measurements from switch
-                remoteFolder = os.path.join(baseRemoteFolder,"queue/")
-                #localFolder = os.path.join(baseLocalFolder,"queue/")
-                downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
-
-                logging.info("Download completed")
-
-                logging.info("uncompress tcpdump files...")
-                condensedFolder = os.path.join(baseLocalFolder,"condensed/")
-                logging.info("condensedFolder: " + condensedFolder)
-                cmd = "cat " + condensedFolder + "*.tar | sudo tar -xvf - -i --directory " + condensedFolder
-                output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                logging.info("uncompressed: " + output)
-
-                logging.info("remove compressed data")
-                cmd = "find " + condensedFolder + "* -name '*.tar' -print | xargs sudo rm"
-                output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                logging.info("removing of compressed files: " + output)
-
-                logging.info("Find results of this run in: " + baseLocalFolder)
+                # Setup interfaces at senders, switch and receiver
+                setupInterfaces(True,senderSSH,recSSH,switchSSH)
                 
-                logging.info("start local logparser")
-                logparsermain(exp_config["result_dir"])
-                logging.info("logparser finished")
+                logging.info("start measuring on switch, sender and receiver")
 
-                logging.info("remove condensed data files")
-                cmd = "find " + condensedFolder + "* -name '*.csv' -print | xargs sudo rm"
-                output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                logging.info("removed condensed data files: " + output)
-            else:
-                logging.info("Set flag to not download files")
+                # Start switch measurements
+                switchSSH.sendline("nohup python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_queue_measurements.py &")
+                switchSSH.prompt()            
+                response = switchSSH.before.decode("utf-8")
 
-            for dir_name, _, file_names in os.walk(result_folder):
-                for file_name in file_names:
-                    os.chown(os.path.join(dir_name, file_name), os.stat('.').st_uid, os.stat('.').st_gid)
+                pidPattern = re.compile("\[[0-9]+\] [0-9]+")
+                number = re.compile("[0-9]+")
+
+                extendedPid = pidPattern.findall(response)[0]
+                pid_queue = number.findall(extendedPid)[1]
+                logging.info("Started queue measurement")
+                logging.debug("Process id of queue measurement: {}".format(pid_queue))
                 
-        logging.info("All runs completed")
+                # Start 'receiver node' measurements
+                logging.info("Start sender and receiver measuremnts")
+                recSSH.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_measurements.sh")
+                
+                time.sleep(1) # make sure the server is running on receiver node
+                # Start 'sender nodes' measurements
+                for k,v in senderSSH.items():
+                    v.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_measurements.sh")
+                
+                logging.info("Wait for at least {} seconds for measurements to complete".format(exp_config["send_duration"]))
+                
+                # receive answers
+                for k,v in senderSSH.items():
+                    v.prompt()
+                    logging.debug("started " + k + ": " + str(v.before.decode("utf-8")))
 
-    logging.info("All parameter configurations done")
+                recSSH.prompt()
+                logging.debug("started receiver: " + str(recSSH.before.decode("utf-8")))
+
+                # end all tcpdump measurements
+                for k,v in allSSH.items():
+                    logging.info("end tcpdump on " + k)
+                    v.sendline('sudo pkill -SIGTERM -f tcpdump')
+                    v.prompt()
+                
+                switchSSH.sendline("sudo kill -SIGTERM " + pid_queue)
+                switchSSH.prompt()
+                logging.info("Stopped queue measurement: " + switchSSH.before.decode("utf-8"))
+
+                logging.info("Finished all measurements")
+                
+                # remove interfaces at senders, switch, receiver
+                # could be done only once for every parameter configuration, but we always
+                # want fastest speeds possible for transferring data to receiver node
+                setupInterfaces(False,senderSSH,recSSH,switchSSH)
+
+                # create condensed tcpdump files on remote nodes
+                logging.info("start creating condensed tcpdump files")
+                for k,v in allSSH.items():
+                    if k == "switch": continue
+                    v.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/remote_logparser.py")
+                    v.prompt()
+                    logging.info("created condensed tcpdump file on " + k)
+                logging.info("finished all condensed remote tcpdump files")
+
+                # download condensed folder files and queue measurements
+                if download:
+                    logging.info("start getting all measurement data from server")
+                    baseRemoteFolder = os.path.join("/local",exp_config["result_dir"])
+                    baseLocalFolder = os.path.join(os.getcwd(),exp_config["result_dir"])
+
+                    # download condensed files
+                    remoteFolder = os.path.join(baseRemoteFolder,"condensed/")
+                    #localFolder = os.path.join(baseLocalFolder,"condensed/")
+                    downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
+
+                    # download logfiles
+                    remoteFolder = os.path.join(baseRemoteFolder,"hostlogs/")
+                    #localFolder = os.path.join(baseLocalFolder,"hostlogs/")
+                    downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
+
+                    # download queue measurements from switch
+                    remoteFolder = os.path.join(baseRemoteFolder,"queue/")
+                    #localFolder = os.path.join(baseLocalFolder,"queue/")
+                    downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
+
+                    logging.info("Download completed")
+
+                    logging.info("uncompress tcpdump files...")
+                    condensedFolder = os.path.join(baseLocalFolder,"condensed/")
+                    logging.info("condensedFolder: " + condensedFolder)
+                    cmd = "cat " + condensedFolder + "*.tar | sudo tar -xvf - -i --directory " + condensedFolder
+                    output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                    logging.info("uncompressed: " + output)
+
+                    logging.info("remove compressed data")
+                    cmd = "find " + condensedFolder + "* -name '*.tar' -print | xargs sudo rm"
+                    output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                    logging.info("removing of compressed files: " + output)
+
+                    logging.info("Find results of this run in: " + baseLocalFolder)
+                    
+                    logging.info("start local logparser")
+                    logparsermain(exp_config["result_dir"])
+                    logging.info("logparser finished")
+
+                    logging.info("remove condensed data files")
+                    cmd = "find " + condensedFolder + "* -name '*.csv' -print | xargs sudo rm"
+                    output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                    logging.info("removed condensed data files: " + output)
+                else:
+                    logging.info("Set flag to not download files")
+
+                for dir_name, _, file_names in os.walk(result_folder):
+                    for file_name in file_names:
+                        os.chown(os.path.join(dir_name, file_name), os.stat('.').st_uid, os.stat('.').st_gid)
+            logging.info("All runs completed")
+    
+        logging.info("All parameter configurations done")
+    else:
+        logging.info("No experiment flag set")
             
     # ---------------
     # Stop experiment and all connections
@@ -460,6 +462,7 @@ if __name__ == "__main__":
     parser.add_argument("-c","--config",type=str,default="./configs/test_config.yml", help="path to your config file")
     parser.add_argument("-d","--download",action="store_true",default=False,help="don't download results (for testing only)")
     parser.add_argument("-y","--yes",action="store_true",default=False,help="start and stop hardware automatically without asking")
+    parser.add_argument("-n","--noexperiment",action="store_true",default=False,help="only start and stop hardware without actually doing experiment")
     args = parser.parse_args()
 
     if args.verbosity:
@@ -471,5 +474,5 @@ if __name__ == "__main__":
         logging.info("File does not exist or path is wrong")
         sys.exit(1)
     else:
-        main(args.config, not args.download, args.yes)
+        main(args.config, not args.download, args.yes, args.noexperiment)
 
