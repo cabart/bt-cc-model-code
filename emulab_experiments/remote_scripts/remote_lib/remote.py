@@ -112,7 +112,7 @@ def ifaceNumberToDeviceNumber(ifaceNumber,numSenders):
     '''
         Get last number of interface number. e.g. 10.0.0.x
         10.0.0.2 -> hDest
-        10.0.0.x -> (x>2) hY (Y == x-1)
+        10.0.0.x -> (x>2) hY (Y == x-2)
 
         Args:
             ifaceNumber: should be an integer or string which can be converted to an integer
@@ -129,8 +129,20 @@ def ifaceNumberToDeviceNumber(ifaceNumber,numSenders):
     elif ifaceNumber == 1:
         return -1
     else:
-        return ifaceNumber - 1
+        return ifaceNumber - 2
 
+
+def getSenderIface(sender_name):
+    '''
+    To be implemented
+    '''
+    return
+
+def getSenderIfaceAtSwitch(sender_name):
+    '''
+    To be implemented
+    '''
+    return
 
 if __name__ == "__main__":
     # for testing purposes
