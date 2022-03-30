@@ -9,33 +9,29 @@ import subprocess
 
 import switch_get_ifaces
 
-def addSendersLimits(latency_range, source_latency, capacity):
-    # TODO: use correct latency
-    lat = str(latency_range[0]) + "ms" # TODO: use actual range
-    bandwidth = str(capacity) + "mbit"
-    for iface in switch_get_ifaces.getSenderifaces():
-        try:
-            if source_latency:
+def addSendersLimits(sending_behavior):
+    for host in sending_behavior:
+        for hostname,properties in host.items():
+            iface = switch_get_ifaces.getSenderiface(hostname)
+            lat = str(properties["latency"]) + "ms"
+            print("add latency:",hostname,iface,lat)
+            try:
                 subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat])
-            else:
-                # don't need to setup link at all
-                pass
-
-        except subprocess.CalledProcessError as e:
-            # adding failed, most likely because there already is a root qdisc
-            sys.exit(1)
+            except subprocess.CalledProcessError as e:
+                print("Error:",e)
+                sys.exit(1)
 
 
-def removeSendersLimits():
+def removeSendersLimits(sending_behavior):
     # TODO: check if this throws an error if no queue is initialized
-    for iface in switch_get_ifaces.getSenderifaces():
-        try:
-            subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
-        except subprocess.CalledProcessError as e:
-            # removing failed, most likely because there is no netem qdisc setup
-            #sys.exit(1)
-            print("removing failed, probably no netem set up due to zero latency")
-            pass
+    for host in sending_behavior:
+        for hostname in host.keys():
+            iface = switch_get_ifaces.getSenderiface(hostname)
+            try:
+                subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
+            except subprocess.CalledProcessError as e:
+                # removing failed, most likely because there is no netem qdisc setup
+                print("removing failed, probably no netem set up due to zero latency")
 
 
 def addReceiverLimits(latency, use_red, capacity):
@@ -82,7 +78,6 @@ def main():
     latency = config["link_latency"]
     capacity = config["link_capacity"]
     source_latency = config["source_latency"]
-    source_latency_range = config["source_latency_range"]
     use_red = config["use_red"]
 
     bufferFactor = config["switch_buffer"]
@@ -92,11 +87,13 @@ def main():
         # add interfaces
 
         # add latency for each sender
-        addSendersLimits(source_latency_range, source_latency, capacity)
+        if source_latency:
+            addSendersLimits(config["sending_behavior"])
         addReceiverLimits(latency, use_red, capacity)
 
     elif args.d:
-        removeSendersLimits()
+        if source_latency:
+            removeSendersLimits()
         removeReceiverLimits()
     else:
         parser.print_help()

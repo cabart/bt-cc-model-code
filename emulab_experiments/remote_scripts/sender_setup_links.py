@@ -7,7 +7,7 @@ import re
 # add/remove outgoing latency from sender -> switch
 
 def getSenderIface(senderNumber):
-    ifaceNumber = senderNumber + 3
+    ifaceNumber = senderNumber + 2
     # get all interfaces (format: '<iface> <ip> <macaddress>')
     with open("/var/emulab/boot/ifmap",'r') as f:
         data = [x.split() for x in f.readlines()]
@@ -33,27 +33,37 @@ def main():
     config = yaml.safe_load(f)
     f.close()
 
+    # if no source latency, nothing to do
+    if not config["source_latency"]:
+        print("no setup needed")
+        sys.exit(0)
+
     # get sender number
-    pattern = re.compile('sender[0-9]+')
-    number = re.compile('[0-9]+')
-    hostname = subprocess.check_output(["hostname"]).decode("utf-8") # e.g. sender3.experiment-name...
-    senderNumber = number.findall(pattern.findall(hostname)[0])[0]
+    hostname_pattern = re.compile('h\d+')
+    hostnumber_pattern = re.compile('h(\d+)')
+    full_hostname = subprocess.check_output(["hostname"]).decode("utf-8") # e.g. h3.experiment-name...
 
-    hostname = "h" + senderNumber
+    sender_number = hostnumber_pattern.findall(full_hostname)[0]
+    hostname = hostname_pattern.findall(full_hostname)[0]
+    print("sender number:", sender_number)
+    print("full hostname:", full_hostname)
+    print("hostname:", hostname)
+
     latency = ""
-    dic = config["sending_behavior"][int(senderNumber)]
-    for val in dic.values():
-        latency = val["latency"]
+    for x in config["sending_behavior"]:
+        if hostname in x.keys():
+            latency = x[hostname]["latency"]
+            break
+    print("latency:", latency)
 
-    print("latency:",latency)
-                
-    capacity = config["link_capacity"]
+    if latency == "":
+        print("no latency found")
+        sys.exit(1)
 
     # get interface name
-    iface = getSenderIface(int(senderNumber))
-    print(iface)
+    iface = getSenderIface(int(sender_number))
+    print("network interface:", iface)
     lat = str(latency) + "ms"
-    cap = str(capacity) + "mbit"
 
     if args.a:
         # add interface
@@ -61,6 +71,7 @@ def main():
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat])
         except subprocess.CalledProcessError as e:
             # adding failed, most likely because there already is a root qdisc
+            print("adding latency at sender failed")
             sys.exit(1)
     elif args.d:
         # remove interface
@@ -68,6 +79,7 @@ def main():
             subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
         except subprocess.CalledProcessError as e:
             # removing failed, most likely because there is no netem qdisc setup
+            print("removing latency at sender failed")
             sys.exit(1)
     else:
         parser.print_help()

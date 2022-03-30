@@ -82,10 +82,10 @@ def createUnboundRspec(numSender, linkCapacity):
         node.addService(pg.Execute(shell="bash", command=startupSender))
         
         iface = node.addInterface("sendIface" + str(i))
-        iface.addAddress(pg.IPv4Address("10.0.0." + str(i+3),"255.255.255.0"))
+        iface.addAddress(pg.IPv4Address("10.0.0." + str(i+2),"255.255.255.0"))
         sendiface = mysw.addInterface("send" + str(i))
-        sendiface.addAddress(pg.IPv4Address("10.0.0." + str(numSender+3+i),"255.255.255.0"))
-        link = request.Link("sendLink-" + str(i),members=[iface,sendiface])
+        sendiface.addAddress(pg.IPv4Address("10.0.0." + str(numSender+2+i),"255.255.255.0"))
+        link = request.Link("sendLink-" + nodeName,members=[iface,sendiface])
         link.bandwidth = linkCapacity
         
     # receiver node
