@@ -68,9 +68,9 @@ def createUnboundRspec(numSender, linkCapacity):
         mysw.hardware_type = phystype
 
     # Add sender PC's
-    for i in range(numSender):
+    for i in range(1,numSender+1):
         # create node + interface + address
-        nodeName = "sender" + str(i)
+        nodeName = "h" + str(i)
         node = request.RawPC(nodeName)
         node.disk_image = img
         node.installRootKeys(True,True)
@@ -89,7 +89,7 @@ def createUnboundRspec(numSender, linkCapacity):
         link.bandwidth = linkCapacity
         
     # receiver node
-    rcvNode = request.RawPC("receiver")
+    rcvNode = request.RawPC("hDest")
     rcvNode.disk_image = img
     rcvNode.installRootKeys(True,True)
     rcvNode.addService(pg.Install(url=repoURL, path=repoPath))

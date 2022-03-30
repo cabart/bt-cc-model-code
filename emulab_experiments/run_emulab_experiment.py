@@ -205,9 +205,9 @@ def main(config_name, download, yesFlag):
         return s
     
     senderSSH = dict()
-    for i in range(numSender):
+    for i in range(1,numSender+1):
         try:
-            sender = "sender" + str(i)
+            sender = "h" + str(i)
             s = connectSSH(sender)
             senderSSH.update({sender: s})
         except pxssh.ExceptionPxssh as e:
@@ -217,7 +217,7 @@ def main(config_name, download, yesFlag):
 
     # connect to receiver
     try:
-        recSSH = connectSSH("receiver")
+        recSSH = connectSSH("hDest")
     except pxssh.ExceptionPxssh as e:
         connectAll = False
         logging.error("Login to receiver node failed: " + e)
@@ -434,9 +434,12 @@ def main(config_name, download, yesFlag):
 
     # terminate experiment
     logging.info("All experiments done")
-    while not yesFlag:
-        inp = input("Do you want to shutdown emulab hardware? [y/n]:")
-        ret = checkUserInput(inp)
+    while True:
+        if not yesFlag:
+            inp = input("Do you want to shutdown emulab hardware? [y/n]:")
+            ret = checkUserInput(inp)
+        else:
+            ret = checkUserInput("y")
         if ret is None:
             logging.warning("invalid input")
             continue

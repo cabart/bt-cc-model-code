@@ -10,14 +10,16 @@ import subprocess
 import switch_get_ifaces
 
 def addSendersLimits(latency_range, source_latency, capacity):
+    # TODO: use correct latency
     lat = str(latency_range[0]) + "ms" # TODO: use actual range
     bandwidth = str(capacity) + "mbit"
     for iface in switch_get_ifaces.getSenderifaces():
         try:
             if source_latency:
-                subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat,"rate",bandwidth])
+                subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat])
             else:
-                subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","rate",bandwidth])
+                # don't need to setup link at all
+                pass
 
         except subprocess.CalledProcessError as e:
             # adding failed, most likely because there already is a root qdisc
@@ -25,12 +27,15 @@ def addSendersLimits(latency_range, source_latency, capacity):
 
 
 def removeSendersLimits():
+    # TODO: check if this throws an error if no queue is initialized
     for iface in switch_get_ifaces.getSenderifaces():
         try:
             subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
         except subprocess.CalledProcessError as e:
             # removing failed, most likely because there is no netem qdisc setup
-            sys.exit(1)
+            #sys.exit(1)
+            print("removing failed, probably no netem set up due to zero latency")
+            pass
 
 
 def addReceiverLimits(latency, use_red, capacity):

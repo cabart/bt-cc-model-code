@@ -91,18 +91,18 @@ def getDeviceNumber():
 
     if name == "switch":
         return 0
-    elif name == "receiver":
+    elif name == "hDest":
         return numSender+1
-    elif "sender" in name:
+    elif "h" in name:
         match = int(re.findall(r'\d+',name)[0])
-        return match + 1
+        return match
     else:
         # should never occur
         return -1
 
 def measuredOnIndex():
     name = getName()
-    if name == "receiver":
+    if name == "hDest":
         return "Dest"
     else:
         return str(getDeviceNumber())
@@ -111,8 +111,8 @@ def measuredOnIndex():
 def ifaceNumberToDeviceNumber(ifaceNumber,numSenders):
     '''
         Get last number of interface number. e.g. 10.0.0.x
-        10.0.0.2 -> receiver
-        10.0.0.x -> (x>2) senderY (Y == x-2)
+        10.0.0.2 -> hDest
+        10.0.0.x -> (x>2) hY (Y == x-1)
 
         Args:
             ifaceNumber: should be an integer or string which can be converted to an integer
@@ -129,7 +129,7 @@ def ifaceNumberToDeviceNumber(ifaceNumber,numSenders):
     elif ifaceNumber == 1:
         return -1
     else:
-        return ifaceNumber - 2
+        return ifaceNumber - 1
 
 
 if __name__ == "__main__":

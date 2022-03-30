@@ -58,7 +58,7 @@ def main():
     if args.a:
         # add interface
         try:
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat,"rate",cap])
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat])
         except subprocess.CalledProcessError as e:
             # adding failed, most likely because there already is a root qdisc
             sys.exit(1)
