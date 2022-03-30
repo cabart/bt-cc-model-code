@@ -3,6 +3,7 @@
 # senderX -> switch interfaces
 
 import argparse
+import queue
 import yaml
 import sys
 import subprocess
@@ -34,12 +35,11 @@ def removeSendersLimits(sending_behavior):
                 print("removing failed, probably no netem set up due to zero latency")
 
 
-def addReceiverLimits(latency, use_red, capacity):
+def addReceiverLimits(latency, use_red, capacity, queue_length):
     lat = str(latency) + "ms"
     iface = switch_get_ifaces.getReceiveriface()
     bandwidth = str(capacity) + "mbit"
-    burst = "15k" # TODO: calculate this
-    limit = "13" # TODO: calculate this
+    limit = str(queue_length)
 
     try:
         if use_red:
@@ -49,8 +49,8 @@ def addReceiverLimits(latency, use_red, capacity):
             #subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"handle","2:0","parent","1:0","netem","delay",lat,"rate",bandwidth])
 
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","5:0","htb","default","1"])
-            subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","5:0","classid","5:1","htb","rate",bandwidth,"burst",burst])
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","6:","red","limit","1000000","min","30000","max","35000",avpkt,"1500",burst,"20","bandwidth",bandwidth,"probability","1"])
+            subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","5:0","classid","5:1","htb","rate",bandwidth,"burst","15k"])
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","6:","red","limit","1000000","min","30000","max","35000","avpkt","1500","burst","20","bandwidth",bandwidth,"probability","1"])
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","6:","handle","10:","netem","delay",lat,"limit",limit])
         else:
             #subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","1:","htb","default","1"])
@@ -58,7 +58,7 @@ def addReceiverLimits(latency, use_red, capacity):
             #subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","1:1","handle","10:","netem","delay",lat,"rate",bandwidth])
 
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","5:0","htb","default","1"])
-            subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","5:0","classid","5:1","htb","rate",bandwidth,"burst",burst])
+            subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","5:0","classid","5:1","htb","rate",bandwidth,"burst","15k"])
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","10:","netem","delay",lat,"limit",limit])
         
     except subprocess.CalledProcessError as e:
@@ -92,8 +92,7 @@ def main():
     source_latency = config["source_latency"]
     use_red = config["use_red"]
 
-    bufferFactor = config["switch_buffer"]
-    bw_delay_product = config["inferred"]["bw_delay_product"]
+    queue_length = config["inferred"]["buffer_size"]
 
     if args.a:
         # add interfaces
@@ -101,7 +100,7 @@ def main():
         # add latency for each sender
         if source_latency:
             addSendersLimits(config["sending_behavior"])
-        addReceiverLimits(latency, use_red, capacity)
+        addReceiverLimits(latency, use_red, capacity, queue_length)
 
     elif args.d:
         if source_latency:
