@@ -237,8 +237,8 @@ def parseTCPDumpMininet(datafiles, filedestination,numSenders):
         logging.info("return code of tar compression: " + str(returnCode))
 
         # remove uncompressed csv data
-        returnCode = subprocess.call(("sudo rm " + filedestination).split())
-        logging.info("return code of rm: " + str(returnCode))
+        #returnCode = subprocess.call(("sudo rm " + filedestination).split())
+        #logging.info("return code of rm: " + str(returnCode))
 
 
 

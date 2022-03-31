@@ -217,7 +217,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
 
     # connect to receiver
     try:
-        recSSH = connectSSH("hDest")
+        recSSH = connectSSH("hdest")
     except pxssh.ExceptionPxssh as e:
         connectAll = False
         logging.error("Login to receiver node failed: " + e)
@@ -231,7 +231,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
 
     # create a dictionary for all nodes
     allSSH = senderSSH.copy()
-    allSSH.update({"hDest": recSSH, "switch": switchSSH})
+    allSSH.update({"hdest": recSSH, "switch": switchSSH})
     logging.debug("all ssh connections: " + str(allSSH))
 
     # all addresses for scp use
@@ -271,6 +271,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
     someSender.prompt()
     logging.info("Test done")
     bandwidth = someSender.before.decode('utf-8')
+    logging.info("bandwidth test:" + bandwidth)
     bandwidth = re.findall(r'bandwidth: (\d+)',bandwidth)[0] + " Mbit/s"
     logging.info("max bandwidth with one sender with this setup: " + bandwidth)
 
@@ -361,6 +362,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 setupInterfaces(False,senderSSH,recSSH,switchSSH)
 
                 # create condensed tcpdump files on remote nodes
+                # TODO: Do this in parallel
                 logging.info("start creating condensed tcpdump files")
                 for k,v in allSSH.items():
                     if k == "switch": continue

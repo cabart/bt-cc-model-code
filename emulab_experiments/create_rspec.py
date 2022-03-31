@@ -89,7 +89,7 @@ def createUnboundRspec(numSender, linkCapacity):
         link.bandwidth = linkCapacity
         
     # receiver node
-    rcvNode = request.RawPC("hDest")
+    rcvNode = request.RawPC("hdest")
     rcvNode.disk_image = img
     rcvNode.installRootKeys(True,True)
     rcvNode.addService(pg.Install(url=repoURL, path=repoPath))

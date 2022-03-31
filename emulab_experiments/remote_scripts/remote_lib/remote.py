@@ -69,7 +69,7 @@ def getIface():
 
 def getName():
     '''
-        Get hostname of host. e.g. sender2, switch or receiver
+        Get hostname of host. e.g. h2, switch or hdest
     '''
     output = subprocess.check_output(["hostname"]).decode("utf-8")
     output = output.split(".")
@@ -91,7 +91,7 @@ def getDeviceNumber():
 
     if name == "switch":
         return 0
-    elif name == "hDest":
+    elif name == "hdest":
         return numSender+1
     elif "h" in name:
         match = int(re.findall(r'\d+',name)[0])
@@ -102,7 +102,7 @@ def getDeviceNumber():
 
 def measuredOnIndex():
     name = getName()
-    if name == "hDest":
+    if name == "hdest":
         return "Dest"
     else:
         return str(getDeviceNumber())
@@ -111,7 +111,7 @@ def measuredOnIndex():
 def ifaceNumberToDeviceNumber(ifaceNumber,numSenders):
     '''
         Get last number of interface number. e.g. 10.0.0.x
-        10.0.0.2 -> hDest
+        10.0.0.2 -> hdest
         10.0.0.x -> (x>2) hY (Y == x-2)
 
         Args:
