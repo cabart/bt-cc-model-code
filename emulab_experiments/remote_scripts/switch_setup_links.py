@@ -7,6 +7,7 @@ import queue
 import yaml
 import sys
 import subprocess
+from remote_lib import remote
 
 import switch_get_ifaces
 
@@ -76,6 +77,10 @@ def removeReceiverLimits():
 
 
 def main():
+    # get logger
+    logger = remote.getLogger("switch_setup_links")
+    logger.info("Started switch link setup")
+
     # get arguments
     parser = argparse.ArgumentParser(description='Add or delete delay at network interfaces')
     group = parser.add_mutually_exclusive_group()
@@ -96,6 +101,7 @@ def main():
 
     if args.a:
         # add interfaces
+        logger.info("Add switch interfaces")
 
         # add latency for each sender
         if source_latency:
@@ -103,6 +109,7 @@ def main():
         addReceiverLimits(latency, use_red, capacity, queue_length)
 
     elif args.d:
+        logger.info("Remove switch interfaces")
         if source_latency:
             removeSendersLimits(config["sending_behavior"])
         removeReceiverLimits()
@@ -110,6 +117,7 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    logger.info("finished setting up switch interfaces")
 
 if __name__ == "__main__":
     main()

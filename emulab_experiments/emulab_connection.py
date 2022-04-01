@@ -28,12 +28,6 @@ from urllib.parse import urlsplit
 import xmlrpc.client as xmlrpclib
 import http.client as httplib
 
-from cryptography import x509
-
-# not supported anymore it seems
-from cryptography.x509.oid import NameOID
-from cryptography.x509.oid import ExtensionOID
-
 import logging
 
 
@@ -80,26 +74,6 @@ class emulabConnection:
 
         # location of all certificates, encrypted and decrypted
         self.certificate_dir = os.path.dirname(self.certificate_loc)
-
-        # load certificate
-        # decrypt them and use that
-        # TODO: loading does only work with .crt without key, maybe should look into this
-        path = self.certificate_loc
-        #path = os.path.join(self.HOME, ".ssl/emucert.crt")
-        try:
-            f = open(path)
-            certdata = f.read()
-            f.close()
-        except IOError:
-            logging.error("Reading of certificate failed. File may not exist?")
-            logging.error("File path: ",path)
-            raise InitializeError("Could not read certificate file. File may not exist")
-
-        try:
-            cert = x509.load_pem_x509_certificate(bytes(certdata,"utf-8"))
-        except Exception:
-            #raise InitializeError("Could not load certificate")
-            logging.error("loading of certificate did not work")
 
         # passphrase
         if os.path.exists(self.password_loc):
@@ -492,9 +466,9 @@ class emulabConnection:
             # check if old expiration time already exceeds new expiration time
             diff = time.mktime(newExpT) - time.mktime(oldExpT)
 
-            logging.info("old expiration time: " + str(oldExpT))
-            logging.info("new expiration time: " + str(newExpT))
-            logging.info("difference between old and new expiration time: " + str(diff))
+            logging.debug("old expiration time: " + str(oldExpT))
+            logging.debug("new expiration time: " + str(newExpT))
+            logging.debug("difference between old and new expiration time: " + str(diff))
             if diff > 0:
                 logging.info("need to extend slice expiration time")
                 worked = self.renewSlice(time.strftime("%Y-%m-%dT%H:%M:%SZ",newExpT))
@@ -557,7 +531,7 @@ class emulabConnection:
             try:
                 pattern = re.compile("<expires>(.+)</expires>")
                 expT = (pattern.findall(self.slice))[0]
-                logging.info("Expiration time " + expT)
+                logging.info("Expiration time (GMT): " + expT)
                 t = time.strptime(expT,"%Y-%m-%dT%H:%M:%SZ")
                 return t
             except Exception as e:

@@ -2,17 +2,11 @@
 
 # Contains methods to generate config file from 
 
-import re
-import sys
-import time
 import math
-import subprocess
 import os
-import threading
 from datetime import datetime
 import yaml
 from collections import Counter
-import argparse
 import itertools
 
 # not used yet
@@ -28,6 +22,7 @@ def get_emulab_config(config_name):
         config = yaml.safe_load(config_file)
     return config
 
+
 # infer config settings into default config
 def config_edited_copy(default_config, custom):
     config = default_config.copy()
@@ -42,14 +37,6 @@ def get_config(config_name):
         config = yaml.safe_load(config_file)
 
     fixed_parameters = config['common_parameters']
-    # Don't need pox directory for emulab
-    #for pox_dir_candidate in config['experiment_parameters']['pox_directory']:
-    #    if os.path.exists(pox_dir_candidate):
-    #        fixed_parameters['pox_directory'] =  pox_dir_candidate
-    #        break
-    #if 'pox_directory' not in fixed_parameters.keys():
-    #    print("No valid pox_directory found! Aborting...")
-    #    sys.exit(1)
 
     if 'delete_raw_dump' in config['experiment_parameters'].keys():
         fixed_parameters['delete_raw_dump'] = config['experiment_parameters']['delete_raw_dump']
@@ -76,6 +63,7 @@ def get_config(config_name):
 
     return config
 
+
 # Go from behavior config dict to behavior summary string
 
 # Help for parsing. Structure of sending behavior:
@@ -92,6 +80,7 @@ def createBehaviorSummary(sending_behavior_dict, config):
         summary.append(config['behavior_summary_mapping'][k] + '-' + str(counts[k]))
     ret = '_'.join(summary)
     return ret
+
 
 # Parse the first input
 # Create new sending behavior based on string and load it into config.

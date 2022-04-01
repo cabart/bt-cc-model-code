@@ -5,6 +5,7 @@ import subprocess
 import re
 import yaml
 import sys
+import logging
 
 def createFolderStructure(result_directory):
     '''
@@ -130,6 +131,26 @@ def ifaceNumberToDeviceNumber(ifaceNumber,numSenders):
         return -1
     else:
         return ifaceNumber - 2
+
+
+def getLogger(logger_name:str):
+    level = logging.DEBUG
+    config = getConfig()
+    name = getName()
+    log_path = os.path.join(config["result_dir"],"hostlogs/" + name + ".log")
+
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(level)
+
+    formatter = logging.Formatter('%(asctime)s:: %(levelname)s:: %(name)s:: %(message)s',datefmt="%H:%M:%S")
+
+    fh = logging.FileHandler(log_path,mode="a")
+    fh.setLevel(level)
+    fh.setFormatter(formatter)
+
+    logger.addHandler(fh)
+
+    return logger
 
 
 def getSenderIface(sender_name):

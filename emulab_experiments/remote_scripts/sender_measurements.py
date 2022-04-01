@@ -174,6 +174,8 @@ def run(behavior_index, desthostID, config):
 if __name__ == "__main__":
     config = remote.getConfig()
 
+    # TODO: Don't run this if number of senders smaller than this host
+
     # create experiment path and folders on node
     global RESULT_DIR 
     RESULT_DIR = os.path.join("/local/",config['result_dir'])

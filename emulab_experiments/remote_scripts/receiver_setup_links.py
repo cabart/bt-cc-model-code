@@ -64,7 +64,7 @@ def main():
     elif args.d:
         # remove interface
         try:
-            subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
+            subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root"])
         except subprocess.CalledProcessError as e:
             # removing failed, most likely because there is no netem qdisc setup
             sys.exit(1)

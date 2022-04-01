@@ -3,6 +3,7 @@ import subprocess
 import sys
 import argparse
 import re
+from remote_lib import remote
 
 # add/remove outgoing latency from sender -> switch
 
@@ -21,6 +22,9 @@ def getSenderIface(senderNumber):
     return iface
 
 def main():
+    logger = remote.getLogger("sender_setup_links")
+    logger.info("Started sender setup links")
+
     # get arguments
     parser = argparse.ArgumentParser(description='Add or delete delay at network interface')
     group = parser.add_mutually_exclusive_group(required=True)
@@ -85,6 +89,7 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    logger.info("Finished setting up sender setup links")
 
 if __name__ == "__main__":
     main()
