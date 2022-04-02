@@ -8,7 +8,6 @@ proc = subprocess.Popen(cmd.split(), stdout=fout, stderr=fout)
 
 proc.communicate()
 rc = proc.returncode
-fout.write("\nreturn code: " + str(rc))
 fout.close()
 
 if rc == 0:

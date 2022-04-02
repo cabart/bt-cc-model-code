@@ -137,7 +137,11 @@ def getLogger(logger_name:str):
     level = logging.DEBUG
     config = getConfig()
     name = getName()
-    log_path = os.path.join(config["result_dir"],"hostlogs/" + name + ".log")
+    #log_path = os.path.join(config["result_dir"],"hostlogs/" + name + ".log")
+    log_path = "/local/node.log"
+    
+    f = open(log_path,"a")
+    f.close()
 
     logger = logging.getLogger(logger_name)
     logger.setLevel(level)
