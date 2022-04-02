@@ -16,6 +16,7 @@ if rc == 0:
     last = f.readlines()[-1]
     f.close()
 
+    print(last)
     bandwidth = re.findall('(\d+) Mbits/sec', last)[0]
     print("bandwidth:",bandwidth)
 else:
