@@ -23,6 +23,10 @@ from plotting_single import *
 
 import pprint
 
+import logging
+logger = logging.getLogger().getChild("logparser")
+logger.info("created logparser logger")
+
 # Notes:
 # Now the statistics are gathered when processing the raw data.
 # So far, there is only cropping available after the raw data processing, which messes up the stats.

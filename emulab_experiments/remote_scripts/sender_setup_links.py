@@ -39,7 +39,7 @@ def main():
 
     # if no source latency, nothing to do
     if not config["source_latency"]:
-        print("no setup needed")
+        logger.info("no setup needed")
         sys.exit(0)
 
     # get sender number
@@ -49,45 +49,56 @@ def main():
 
     sender_number = hostnumber_pattern.findall(full_hostname)[0]
     hostname = hostname_pattern.findall(full_hostname)[0]
-    print("sender number:", sender_number)
-    print("full hostname:", full_hostname)
-    print("hostname:", hostname)
+    logger.info("sender number: " + sender_number)
+    logger.info("full hostname: " + full_hostname)
+    logger.info("hostname: " + hostname)
 
     latency = ""
     for x in config["sending_behavior"]:
         if hostname in x.keys():
             latency = x[hostname]["latency"]
             break
-    print("latency:", latency)
+    logger.info("latency: " + str(latency))
 
     if latency == "":
-        print("no latency found")
+        logger.error("no latency found")
         sys.exit(1)
 
     # get interface name
     iface = getSenderIface(int(sender_number))
-    print("network interface:", iface)
+    logger.info("network interface: " + iface)
     lat = str(latency) + "ms"
 
     if args.a:
         # add interface
+        logger.info("Add delay of " + lat + " to " + hostname)
         try:
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat])
         except subprocess.CalledProcessError as e:
             # adding failed, most likely because there already is a root qdisc
-            print("adding latency at sender failed")
+            logger.error("adding latency at sender failed")
             sys.exit(1)
     elif args.d:
         # remove interface
+        logger.info("Remove delay from " + hostname)
         try:
             subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
         except subprocess.CalledProcessError as e:
             # removing failed, most likely because there is no netem qdisc setup
-            print("removing latency at sender failed")
+            logger.error("removing latency at sender failed")
             sys.exit(1)
     else:
+        logger.info("Called file without setting a flag")
         parser.print_help()
         sys.exit(1)
+
+    logger.info("Show host interface")
+    try:
+        output = subprocess.check_output(["sudo","tc","qdisc","show","dev",iface])
+        logger.info(output)
+        logger.info("---")
+    except:
+        logger.error("could not show interface setup")
 
     logger.info("Finished setting up sender setup links")
 

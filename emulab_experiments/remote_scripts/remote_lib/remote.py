@@ -148,7 +148,7 @@ def getLogger(logger_name:str):
         log_path = "/local/node.log"
     
     f = open(log_path,"a")
-    f.write("started logger: " + logger_name)
+    f.write("started logger: " + logger_name + "\n")
     f.close()
 
     logger = logging.getLogger(logger_name)

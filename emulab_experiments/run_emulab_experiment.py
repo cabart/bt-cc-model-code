@@ -25,7 +25,7 @@ from emulab_connection import *
 from logparser import external_main as logparsermain
 
 import logging
-logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
+logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(name)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
 
 
 def sourceLatency(nSender, minLat, maxLat):
@@ -324,9 +324,10 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 response = switchSSH.before.decode("utf-8")
                 logging.info("switch response: " + response)
                 try:
-                    matches = re.findall(r'\[\d+\] (\d+)',response)
+                    matches = re.findall(r'\[\d+\] (\d+)',response)[0]
                     print("matches: ",matches)
                 except:
+                    matches = "None"
                     print("no matches")
 
                 pidPattern = re.compile("\[[0-9]+\] [0-9]+")
@@ -334,6 +335,10 @@ def main(config_name, download, yesFlag, noexperimentFlag):
 
                 extendedPid = pidPattern.findall(response)[0]
                 pid_queue = number.findall(extendedPid)[1]
+                if pid_queue == matches:
+                    logging.info("the same")
+                else:
+                    logging.info("not the same")
                 logging.info("Started queue measurement")
                 logging.info("Process id of queue measurement: {}".format(pid_queue))
                 
@@ -409,29 +414,17 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                     downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
 
                     logging.info("Download completed")
-
-                    #logging.info("uncompress tcpdump files...")
-                    #condensedFolder = os.path.join(baseLocalFolder,"condensed/")
-                    #logging.info("condensedFolder: " + condensedFolder)
-                    #cmd = "cat " + condensedFolder + "*.tar | sudo tar -xvf - -i --directory " + condensedFolder
-                    #output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                    #logging.info("uncompressed: " + output)
-
-                    #logging.info("remove compressed data")
-                    #cmd = "find " + condensedFolder + "* -name '*.tar' -print | xargs sudo rm"
-                    #output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                    #logging.info("removing of compressed files: " + output)
-
                     logging.info("Find results of this run in: " + baseLocalFolder)
                     
                     logging.info("start local logparser")
                     logparsermain(exp_config["result_dir"])
                     logging.info("logparser finished")
 
-                    #logging.info("remove condensed data files")
-                    #cmd = "find " + condensedFolder + "* -name '*.csv' -print | xargs sudo rm"
-                    #output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                    #logging.info("removed condensed data files: " + output)
+                    logging.info("remove condensed data files")
+                    condensedFolder = os.path.join(baseLocalFolder,"condensed/")
+                    cmd = "find " + condensedFolder + "* -name '*.csv' -print | xargs sudo rm"
+                    output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                    logging.info("removed condensed data files: " + output)
                 else:
                     logging.info("Set flag to not download files")
 

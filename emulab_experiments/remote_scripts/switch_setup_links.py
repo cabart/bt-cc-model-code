@@ -11,20 +11,19 @@ from remote_lib import remote
 
 import switch_get_ifaces
 
-def addSendersLimits(sending_behavior):
+def addSendersLimits(sending_behavior, logger):
     for host in sending_behavior:
         for hostname,properties in host.items():
             iface = switch_get_ifaces.getSenderiface(hostname)
             lat = str(properties["latency"]) + "ms"
-            print("add latency:",hostname,iface,lat)
+            logger.info("add latency: {}, {}, {}".format(hostname,iface,lat))
             try:
                 subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat])
             except subprocess.CalledProcessError as e:
-                print("Error:",e)
-                sys.exit(1)
+                logger.error("Could not setup link: {}".format(e))
+            
 
-
-def removeSendersLimits(sending_behavior):
+def removeSendersLimits(sending_behavior, logger):
     # TODO: check if this throws an error if no queue is initialized
     for host in sending_behavior:
         for hostname in host.keys():
@@ -33,15 +32,16 @@ def removeSendersLimits(sending_behavior):
                 subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root","netem"])
             except subprocess.CalledProcessError as e:
                 # removing failed, most likely because there is no netem qdisc setup
-                print("removing failed, probably no netem set up due to zero latency")
+                logger.error("removing failed, probably no netem set up due to zero latency")
 
 
-def addReceiverLimits(latency, use_red, capacity, queue_length):
+def addReceiverLimits(latency, use_red, capacity, queue_length, logger):
     lat = str(latency) + "ms"
     iface = switch_get_ifaces.getReceiveriface()
     bandwidth = str(capacity) + "mbit"
     limit = str(queue_length)
 
+    logger.info("Add receiver link setup: latency {}, bandwidth {}, queue_size {}, iface {}".format(lat,bandwidth,limit,iface))
     try:
         if use_red:
             #limit = str(400000)
@@ -64,16 +64,16 @@ def addReceiverLimits(latency, use_red, capacity, queue_length):
         
     except subprocess.CalledProcessError as e:
         # adding failed, most likely because there already is a root qdisc
-        sys.exit(1)
+        logger.error("Setting up receiver link failed")
 
 
-def removeReceiverLimits():
+def removeReceiverLimits(logger):
     iface = switch_get_ifaces.getReceiveriface()
     try:
         subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root"])
     except subprocess.CalledProcessError as e:
         # removing failed, most likely because there is no netem qdisc setup
-        sys.exit(1)
+        logger.error("Removing receiver interface setup failed")
 
 
 def main():
@@ -105,19 +105,28 @@ def main():
 
         # add latency for each sender
         if source_latency:
-            addSendersLimits(config["sending_behavior"])
-        addReceiverLimits(latency, use_red, capacity, queue_length)
+            logger.info("no added latency, don't setup sender link latencies")
+            addSendersLimits(config["sending_behavior"], logger)
+        addReceiverLimits(latency, use_red, capacity, queue_length, logger)
 
     elif args.d:
         logger.info("Remove switch interfaces")
         if source_latency:
-            removeSendersLimits(config["sending_behavior"])
-        removeReceiverLimits()
+            removeSendersLimits(config["sending_behavior"], logger)
+        removeReceiverLimits(logger)
     else:
         parser.print_help()
         sys.exit(1)
 
-    logger.info("finished setting up switch interfaces")
+    logger.info("Show switch interfaces")
+    try:
+        output = subprocess.check_output(["sudo","tc","qdisc","show"])
+        logger.info(output)
+        logger.info("---")
+    except:
+        logger.error("could not show interface setup")
+
+    logger.info("Finished setting up switch setup links")
 
 if __name__ == "__main__":
     main()

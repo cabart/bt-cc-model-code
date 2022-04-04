@@ -2,6 +2,7 @@ import yaml
 import subprocess
 import sys
 import argparse
+from remote_lib import remote
 
 # add/remove outgoing latency from receiver -> switch
 
@@ -18,6 +19,9 @@ def getReceiveriface():
     return iface
 
 def main():
+    logger = remote.getLogger("receiver_setup_links")
+    logger.info("Started receiver setup links")
+
     # get arguments
     parser = argparse.ArgumentParser(description='Add or delete delay at network interface')
     group = parser.add_mutually_exclusive_group()
@@ -42,6 +46,7 @@ def main():
 
     if args.a:
         # add interface
+        logger.info("Add interface: latency {}, capacity {}, use_red {}, queue_size {}, iface {}".format(lat,bandwidth,use_red,limit,iface))
         try:
             if use_red:
                 subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","5:0","htb","default","1"])
@@ -55,6 +60,7 @@ def main():
         
         except subprocess.CalledProcessError as e:
             # adding failed, most likely because there already is a root qdisc
+            logger.error("Adding interface failed")
             sys.exit(1)
         #try:
         #    subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat,"rate",cap])
@@ -65,12 +71,25 @@ def main():
         # remove interface
         try:
             subprocess.check_output(["sudo","tc","qdisc","del","dev",iface,"root"])
+            logger.info("Removed link setup successfully")
         except subprocess.CalledProcessError as e:
             # removing failed, most likely because there is no netem qdisc setup
+            logger.info("Failed removing link setup")
             sys.exit(1)
     else:
+        logger.warning("Called file without setting a flag")
         parser.print_help()
         sys.exit(1)
+    
+    logger.info("Show receiver interface")
+    try:
+        output = subprocess.check_output(["sudo","tc","qdisc","show","dev",iface])
+        logger.info(output)
+        logger.info("---")
+    except:
+        logger.error("could not show interface setup")
+
+    logger.info("Finished setting up sender setup links")
 
 
 if __name__ == "__main__":
