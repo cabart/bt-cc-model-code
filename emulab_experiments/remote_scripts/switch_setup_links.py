@@ -120,7 +120,7 @@ def main():
 
     logger.info("Show switch interfaces")
     try:
-        output = subprocess.check_output(["sudo","tc","qdisc","show"])
+        output = subprocess.check_output(["sudo","tc","qdisc","show"]).decode("utf-8")
         logger.info(output)
         logger.info("---")
     except:

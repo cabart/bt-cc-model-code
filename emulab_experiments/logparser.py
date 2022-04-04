@@ -24,7 +24,8 @@ from plotting_single import *
 import pprint
 
 import logging
-logger = logging.getLogger().getChild("logparser")
+#logger = logging.getLogger().getChild("logparser")
+logger = logging.getLogger("root.logparser")
 logger.info("created logparser logger")
 
 # Notes:
@@ -83,7 +84,7 @@ def inflight_calc(data, econfig):
                 data.at[r, 'bytes_acked'] = max(row['ackno'] - last_byte_acked, 0)
                 last_byte_acked = row['ackno']
 
-    print("Calculated inflight.")
+    logger.info("Calculated inflight.")
 
 
 # INPUT:
@@ -322,25 +323,25 @@ def processTCPDdata(filename, econfig, timestep=0.1):
 
 def parseTCPDumpMininet(datafiles, filedestination):
     # get datafiles tcpdumpsender1, tcpdumpsender2, ...
-    print("Parse tcpdump files to single tcpdump file")
-    print(datafiles)
+    logger.info("Parse tcpdump files to single tcpdump file")
+    logger.info(f"files to be parsed: {datafiles}")
 
     realPaths = []
     for path in datafiles:
         realPaths.append(RESULT_FILE_PREFIX + condenseddatafolder + path)
-    print(realPaths)
+    logger.info(f"full paths: {realPaths}")
 
     df = pd.concat(map(pd.read_csv,realPaths),ignore_index=True)
     df.sort_values("timestamp",ignore_index=True)
     df.to_csv(filedestination,index=False)
-    print("parsed all tcpdump files to one file")
+    logger.info("parsed all tcpdump files to one file")
 
 
 #--------------------------------------------------------------------------------
 # Parse raw load data files
 def parseCwndFiles(datafiles):
     more_output = False
-    print("Parsing CWND. Files: ", len(datafiles))
+    logger.info(f"Parsing CWND. Files: {len(datafiles)}")
 
     cwndData = {}
     ssthreshData = {}
@@ -357,7 +358,7 @@ def parseCwndFiles(datafiles):
         datafile = RESULT_FILE_PREFIX+logfolder+df
         more_output = True
         if more_output:
-            print("Parsing datafile "+datafile+"...")
+            logger.info(f"Parsing datafile {datafile}...")
 
         cwndData[ip]     = {}
         ssthreshData[ip] = {}
@@ -388,7 +389,7 @@ def parseCwndFiles(datafiles):
 
 # Assuming file structure (csv): unix-timestamp,packets-in-queue
 def readQueueFile(datafile):
-    print("Parsing queuefile.")
+    logger.info("Parsing queuefile.")
 
 
     # headers = ['ts', 'queue']
@@ -702,7 +703,7 @@ def main(savePlot=False):
         import warnings
         warnings.simplefilter("ignore")
 
-    print("============\nStarting with: ", RESULT_FILE_PREFIX, "\n==============")
+    logger.info("Starting with: {}".format(RESULT_FILE_PREFIX))
     tcpd_data = calculateLoad(econfig)
     cwndData, ssthreshData = parseCwndFiles([f for f in os.listdir(RESULT_FILE_PREFIX+logfolder)])
     #memdata = loadFromCSV(RESULT_FILE_PREFIX + "sysmemusage.csv")
@@ -715,7 +716,7 @@ def main(savePlot=False):
     startAbsTs = tcpd_data['abs_ts'].values[0]
     endAbsTs = tcpd_data['abs_ts'].values[-1]
     queueTs, queueVal = readQueueFile(RESULT_FILE_PREFIX + queuefolder + "queue_length.csv")
-    print("Start/End timestamp: ", startTimestamp, endTimestamp)
+    logger.info("Start/End timestamp: {}, {}".format(startTimestamp,endTimestamp))
     num_axes = sum([econfig['plot_loss'], econfig['plot_throughput'], econfig['plot_jitter'],
                     econfig['plot_cwnd'], econfig['plot_latency'], econfig['plot_queue'], econfig['plot_memory'],
                    2 * econfig['plot_iperf_losslat']])
@@ -787,11 +788,12 @@ def main(savePlot=False):
         plt.close(figurename)
     else:
         plt.show()
-    print(stats)
+    logger.info("Stats:")
+    logger.info(str(stats))
 
     with open(RESULT_FILE_PREFIX + econfig['stats_file'], 'w+') as statsfile:
         json.dump(stats, statsfile, indent=4)
-    print("Overview Plotted")
+    logger.info("Overview Plotted")
     plt.clf()
     # Single Plots
     bdp = econfig['inferred']['bw_delay_product']
@@ -807,9 +809,9 @@ def main(savePlot=False):
     plotCwnd("cwnd", None, cwndData, ssthreshData, startAbsTs, endAbsTs, xticks, RESULT_FILE_PREFIX + "cwnd.png")
     '''
 
-    print("Opening permissions...")
+    logger.info("Opening permissions...")
     os.system("sudo chmod -R 777 " +  RESULT_FILE_PREFIX)
-    print("Parsing and plotting finished.")
+    logger.info("Parsing and plotting finished.")
     plt.close('all')
 
 

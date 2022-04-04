@@ -49,9 +49,9 @@ def main():
 
     sender_number = hostnumber_pattern.findall(full_hostname)[0]
     hostname = hostname_pattern.findall(full_hostname)[0]
-    logger.info("sender number: " + sender_number)
     logger.info("full hostname: " + full_hostname)
     logger.info("hostname: " + hostname)
+    logger.info("sender number: " + sender_number)
 
     latency = ""
     for x in config["sending_behavior"]:

@@ -322,23 +322,12 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 switchSSH.sendline("nohup python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_queue_measurements.py &")
                 switchSSH.prompt()            
                 response = switchSSH.before.decode("utf-8")
-                logging.info("switch response: " + response)
                 try:
-                    matches = re.findall(r'\[\d+\] (\d+)',response)[0]
-                    print("matches: ",matches)
+                    pid_queue = re.findall(r'\[\d+\] (\d+)',response)[0]
                 except:
-                    matches = "None"
-                    print("no matches")
+                    pid_queue = ""
+                    logging.error("Got no process id: {}".format(response))
 
-                pidPattern = re.compile("\[[0-9]+\] [0-9]+")
-                number = re.compile("[0-9]+")
-
-                extendedPid = pidPattern.findall(response)[0]
-                pid_queue = number.findall(extendedPid)[1]
-                if pid_queue == matches:
-                    logging.info("the same")
-                else:
-                    logging.info("not the same")
                 logging.info("Started queue measurement")
                 logging.info("Process id of queue measurement: {}".format(pid_queue))
                 

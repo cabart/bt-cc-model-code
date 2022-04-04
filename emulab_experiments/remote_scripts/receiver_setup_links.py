@@ -61,7 +61,6 @@ def main():
         except subprocess.CalledProcessError as e:
             # adding failed, most likely because there already is a root qdisc
             logger.error("Adding interface failed")
-            sys.exit(1)
         #try:
         #    subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat,"rate",cap])
         #except subprocess.CalledProcessError as e:
@@ -75,11 +74,9 @@ def main():
         except subprocess.CalledProcessError as e:
             # removing failed, most likely because there is no netem qdisc setup
             logger.info("Failed removing link setup")
-            sys.exit(1)
     else:
         logger.warning("Called file without setting a flag")
         parser.print_help()
-        sys.exit(1)
     
     logger.info("Show receiver interface")
     try:
