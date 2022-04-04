@@ -389,21 +389,18 @@ def main(config_name, download, yesFlag, noexperimentFlag):
 
                     # download condensed files
                     remoteFolder = os.path.join(baseRemoteFolder,"condensed/")
-                    #localFolder = os.path.join(baseLocalFolder,"condensed/")
                     downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
 
                     # download logfiles
                     remoteFolder = os.path.join(baseRemoteFolder,"hostlogs/")
-                    #localFolder = os.path.join(baseLocalFolder,"hostlogs/")
                     downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
 
                     # download queue measurements from switch
                     remoteFolder = os.path.join(baseRemoteFolder,"queue/")
-                    #localFolder = os.path.join(baseLocalFolder,"queue/")
                     downloadFiles(allAddresses,sshKey,remoteFolder,baseLocalFolder)
 
                     logging.info("Download completed")
-                    logging.info("Find results of this run in: " + baseLocalFolder)
+                    logging.info(f"Find results of this run in: {baseLocalFolder}")
                     
                     logging.info("start local logparser")
                     logparsermain(exp_config["result_dir"])

@@ -788,8 +788,7 @@ def main(savePlot=False):
         plt.close(figurename)
     else:
         plt.show()
-    logger.info("Stats:")
-    logger.info(str(stats))
+    logger.info(f"Stats:\n{stats}")
 
     with open(RESULT_FILE_PREFIX + econfig['stats_file'], 'w+') as statsfile:
         json.dump(stats, statsfile, indent=4)

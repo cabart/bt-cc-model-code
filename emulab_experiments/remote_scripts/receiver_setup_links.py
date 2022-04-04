@@ -49,18 +49,24 @@ def main():
         logger.info("Add interface: latency {}, capacity {}, use_red {}, queue_size {}, iface {}".format(lat,bandwidth,use_red,limit,iface))
         try:
             if use_red:
+                logger.info("use RED")
                 subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","5:0","htb","default","1"])
                 subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","5:0","classid","5:1","htb","rate",bandwidth,"burst","15k"])
                 subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","6:","red","limit","1000000","min","30000","max","35000","avpkt","1500","burst","20","bandwidth",bandwidth,"probability","1"])
                 subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","6:","handle","10:","netem","delay",lat,"limit",limit])
             else:
-                subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","5:0","htb","default","1"])
-                subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","5:0","classid","5:1","htb","rate",bandwidth,"burst","15k"])
-                subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","10:","netem","delay",lat,"limit",limit])
-        
+                logger.info("don't use red")
+                t = subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","5:0","htb","default","1"])
+                logger.info(f"test 1, {t}")
+                t = subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","5:0","classid","5:1","htb","rate",bandwidth,"burst","15k"])
+                logger.info(f"test 2, {t}")
+                t = subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","10:","netem","delay",lat,"limit",limit])
+                logger.info(f"test 3, {t}")
         except subprocess.CalledProcessError as e:
             # adding failed, most likely because there already is a root qdisc
-            logger.error("Adding interface failed")
+            logger.error(f"Adding interface failed: {e}")
+        except Exception as e:
+            logger.error(f"Error: {e}")
         #try:
         #    subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","netem","delay",lat,"rate",cap])
         #except subprocess.CalledProcessError as e:
