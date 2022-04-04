@@ -55,10 +55,13 @@ def getConfig():
         Returns:
             config, a dictionary-like object of the experiment configuration
     '''
-    f = open("/local/config.yaml", "r")
-    config = yaml.safe_load(f)
-    f.close()
-    return config
+    try:
+        f = open("/local/config.yaml", "r")
+        config = yaml.safe_load(f)
+        f.close()
+        return config
+    except:
+        raise Exception("No config file available")
 
 # TODO: to be implemented
 def getIface():
@@ -135,12 +138,15 @@ def ifaceNumberToDeviceNumber(ifaceNumber,numSenders):
 
 def getLogger(logger_name:str):
     level = logging.DEBUG
-    config = getConfig()
     name = getName()
-    #log_path = os.path.join(config["result_dir"],"hostlogs/" + name + ".log")
-    log_path = "/local/node.log"
+    try:
+        config = getConfig()
+        log_path = os.path.join(config["result_dir"],"hostlogs/" + name + ".log")
+    except Exception as e:
+        log_path = "/local/node.log"
     
     f = open(log_path,"a")
+    f.write("started logger: " + logger_name)
     f.close()
 
     logger = logging.getLogger(logger_name)
