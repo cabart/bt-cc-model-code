@@ -15,7 +15,6 @@ import os
 import time
 import argparse
 import random
-
 from pexpect import pxssh
 import subprocess
 
@@ -24,14 +23,30 @@ from generate_config import *
 from emulab_connection import *
 from logparser import external_main as logparsermain
 
+# use a root logger
 import logging
 logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(name)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
 
+class ExperimentConnections:
+    def __init__(self):
+        return
+
 
 def sourceLatency(nSender, minLat, maxLat):
+    '''
+        Generates random latencies for each sender.
+
+        Args:
+            nSender: Number of senders
+            minLat: lowest latency limit
+            maxLat: highest latency limit
+        
+        Returns:
+            list of length nSender with pseudo-random latencies between minLat and maxLat
+    '''
     random.seed(1)
     lat = []
-    for i in range(nSender):
+    for _ in range(nSender):
         random_latency = int(random.uniform(minLat,maxLat)*10)/10
         lat.append(random_latency)
     logging.info("Sender latencies: " + str(lat))
@@ -39,6 +54,15 @@ def sourceLatency(nSender, minLat, maxLat):
 
 
 def setupInterfaces(start,senderSSH,recSSH,switchSSH):
+    '''
+        Setup all interfaces of experiment at senders, switch and receiver
+
+        Args:
+            start: Boolean whether setups are added or removed
+        
+        Returns:
+            Nothing
+    '''
     logging.info("Setup interfaces")
     if start:
         flag = " -a"
@@ -47,14 +71,14 @@ def setupInterfaces(start,senderSSH,recSSH,switchSSH):
         flag = " -d"
         logging.info("Removing delay and capacity limits at all interfaces")
     
-    for k,v in senderSSH.items():
-        v.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
-        v.prompt()
-        message = v.before.decode("utf-8")
-        logging.info(message)
+    #for k,v in senderSSH.items():
+    #    v.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
+    #    v.prompt()
+    #    message = v.before.decode("utf-8")
+    #    logging.info(message)
     
-    recSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
-    recSSH.prompt()
+    #recSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
+    #recSSH.prompt()
 
     switchSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_setup_links.py" + flag)
     switchSSH.prompt()
@@ -62,6 +86,9 @@ def setupInterfaces(start,senderSSH,recSSH,switchSSH):
 
 
 def disableIPv6(disable:bool,allSSH):
+    '''
+        Enable or disable IPv6 at all hosts
+    '''
     if disable:
         logging.info("disable ipv6")
         val = "1"

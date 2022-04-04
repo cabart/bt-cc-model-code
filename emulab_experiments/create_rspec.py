@@ -19,7 +19,8 @@ repoPath = "/local"
 def createUnboundRspec(numSender, linkCapacity):
     """ Returns unbound rspec file as string """
 
-    linkCapacity *= 1000 # in kilobytes # TODO: seems not to be true
+    #linkCapacity *= 1000 # in kilobytes # TODO: seems not to be true
+    linkCapacity = 1000000
 
     # Create a portal context.
     pc = portal.Context()
@@ -87,6 +88,8 @@ def createUnboundRspec(numSender, linkCapacity):
         sendiface.addAddress(pg.IPv4Address("10.0.0." + str(numSender+2+i),"255.255.255.0"))
         link = request.Link("sendLink-" + nodeName,members=[iface,sendiface])
         link.bandwidth = linkCapacity
+        link.link_multiplexing = True
+        link.latency = 10
         
     # receiver node
     rcvNode = request.RawPC("hdest")
@@ -104,6 +107,8 @@ def createUnboundRspec(numSender, linkCapacity):
     iface.addAddress(pg.IPv4Address("10.0.0.2","255.255.255.0"))
     link = request.Link("rcvLink", members=[rcviface,iface])
     link.bandwidth = linkCapacity
+    link.link_multiplexing = False
+    link.latency = 10
     
     # Print the RSpec to the enclosing page.
     return request.toXMLString(pretty_print=True, ucode=True)

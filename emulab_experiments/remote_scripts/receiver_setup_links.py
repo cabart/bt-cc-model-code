@@ -42,7 +42,7 @@ def main():
     iface = getReceiveriface()
     lat = str(latency) + "ms"
     bandwidth = str(capacity) + "mbit"
-    limit = config["inferred"]["buffer_size"]
+    limit = str(config["inferred"]["buffer_size"])
 
     if args.a:
         # add interface
