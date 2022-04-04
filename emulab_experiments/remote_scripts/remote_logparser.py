@@ -132,10 +132,13 @@ plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}' + '\n' + r'\usepac
 # 	0x0020:  5ede 45ed 0001 0a58 0000 0000 0000 0000
 # 	0x0030:  3031 3233 3435 3637 3839 3031 3233 3435
 
-def parseTCPDumpMininet(datafiles, filedestination,numSenders):
-    print("datafiles:",datafiles)
-    print("filedestination:",filedestination)
-    logging.info("file destination: " + filedestination)
+def parseTCPDumpMininet(datafiles, filedestination, numSenders, logger):
+    logger.info("parse tcp dump")
+    logger.info("datafiles: " + str(datafiles))
+    logger.info("filedestination: " + str(filedestination))
+    #print("datafiles:",datafiles)
+    #print("filedestination:",filedestination)
+    #logging.info("file destination: " + filedestination)
     # timestamp, measuredon, src, dest, load, payload, udpno, seqno, ackno
     more_output = True
     data = []
@@ -226,31 +229,33 @@ def parseTCPDumpMininet(datafiles, filedestination,numSenders):
 
         # Write compressed data to a csv file
         np.savetxt(filedestination, np.array(data), delimiter=",", fmt='%s')
+        logger.info("data saved as csv file")
 
         # create compressed archive
-        dir = os.path.dirname(filedestination)
-        logging.info("dir: " + dir)
-        filename = (filedestination.split("/"))[-1]
-        logging.info("filename: " + filename)
-        cmd = "sudo tar cf " + filedestination + ".tar -C " + dir + " " + filename
-        returnCode = subprocess.call(cmd.split())
-        logging.info("return code of tar compression: " + str(returnCode))
+        #dir = os.path.dirname(filedestination)
+        #logging.info("dir: " + dir)
+        #filename = (filedestination.split("/"))[-1]
+        #logging.info("filename: " + filename)
+        #cmd = "sudo tar cf " + filedestination + ".tar -C " + dir + " " + filename
+        #returnCode = subprocess.call(cmd.split())
+        #logging.info("return code of tar compression: " + str(returnCode))
 
         # remove uncompressed csv data
-        returnCode = subprocess.call(("sudo rm " + filedestination).split())
-        logging.info("return code of rm: " + str(returnCode))
+        #returnCode = subprocess.call(("sudo rm " + filedestination).split())
+        #logging.info("return code of rm: " + str(returnCode))
 
 
 
 #--------------------------------------------------------------------------------
 # Get load data
-def calculateLoad(econfig):
+def calculateLoad(econfig, logger):
     hostname = remote.getName()
 
     parsed_data = RESULT_FILE_PREFIX + condenseddatafolder + 'tcpdump' + hostname + '.csv'
+    logger.info("tcpdump file location: " + parsed_data)
     if not os.path.exists(parsed_data):
         datafiles = [f for f in os.listdir(RESULT_FILE_PREFIX + datafolder)]
-        parseTCPDumpMininet(datafiles, parsed_data,econfig["senders"])
+        parseTCPDumpMininet(datafiles, parsed_data, econfig["senders"], logger)
 
 
 def main():
@@ -259,16 +264,16 @@ def main():
     global RESULT_FILE_PREFIX
     RESULT_FILE_PREFIX = os.path.join("/local",econfig["result_dir"])
 
+    logger = remote.getLogger("remote_logparser")
+    logger.info("Started remote logparser")
+
     econfig['more_output'] = False
     if not econfig['more_output']:
         import warnings
         warnings.simplefilter("ignore")
 
-    print("============\nStarting with: ", RESULT_FILE_PREFIX, "\n==============")
-    calculateLoad(econfig)
-    #cwndData, ssthreshData = parseCwndFiles([f for f in os.listdir(RESULT_FILE_PREFIX+logfolder)])
-    #if os.path.exists(RESULT_FILE_PREFIX+'bbr2_internals.log'):
-    #    bbr2InternalsData = parse_bbr2_internals_file(RESULT_FILE_PREFIX+'bbr2_internals.log', RESULT_FILE_PREFIX+condenseddatafolder+'bbr2_internals.csv')
+    logger.info("Starting with: " + RESULT_FILE_PREFIX)
+    calculateLoad(econfig,logger)
 
 
 if __name__ == "__main__":
