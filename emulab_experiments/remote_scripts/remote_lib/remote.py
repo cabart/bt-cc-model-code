@@ -141,7 +141,9 @@ def getLogger(logger_name:str):
     name = getName()
     try:
         config = getConfig()
-        log_path = os.path.join(config["result_dir"],"hostlogs/" + name + ".log")
+        res_folder = os.path.join("/local/",config['result_dir'])
+        createFolderStructure(res_folder)
+        log_path = os.path.join(res_folder,"hostlogs/" + name + ".log")
     except Exception as e:
         log_path = "/local/node.log"
     

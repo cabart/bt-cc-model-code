@@ -34,6 +34,7 @@ def sourceLatency(nSender, minLat, maxLat):
     for i in range(nSender):
         random_latency = int(random.uniform(minLat,maxLat)*10)/10
         lat.append(random_latency)
+    logging.info("Sender latencies: " + str(lat))
     return lat
 
 
@@ -49,6 +50,8 @@ def setupInterfaces(start,senderSSH,recSSH,switchSSH):
     for k,v in senderSSH.items():
         v.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
         v.prompt()
+        message = v.before.decode("utf-8")
+        logging.info(message)
     
     recSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
     recSSH.prompt()
@@ -89,7 +92,8 @@ def addBBR(senderSSH):
 
 def downloadFiles(addresses,sshKey,remoteFolder,localFolder):
     for k,v in addresses.items():
-        retCode = subprocess.call(["scp","-r","-P","22","-i",sshKey,v+":"+remoteFolder,localFolder])
+        #print("scp -r -P 22 -i ",sshKey,v+":"+remoteFolder,localFolder)
+        retCode = subprocess.call(["scp","-r","-C","-P","22","-i",sshKey,v+":"+remoteFolder,localFolder])
         if retCode:
             logging.warning("downlaoding of config file from " + k + " did not work")
             sys.exit(1)
@@ -249,7 +253,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
 
     # Check if all connections worked and start experiment
     if connectAll:
-        # do experiment
+        # Check all connections by requesting their uptime
         for k,v in allSSH.items():
             logging.debug("Test " + k + " uptime: " + uptimeCheckSSH(v))
     else:
@@ -265,15 +269,18 @@ def main(config_name, download, yesFlag, noexperimentFlag):
     # test unlimited bandwidth with one host
     logging.info("test theoretical bandwidth of connection...")
     recSSH.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_test_bandwidth.py')
+    time.sleep(2) # TODO: test if this avoids error which occurs sometimes
     someSender = list(senderSSH.items())[0][1]
     someSender.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_test_bandwidth.py')
     recSSH.prompt()
     someSender.prompt()
     logging.info("Test done")
     bandwidth = someSender.before.decode('utf-8')
-    logging.info("bandwidth test:" + bandwidth)
-    bandwidth = re.findall(r'bandwidth: (\d+)',bandwidth)[0] + " Mbit/s"
-    logging.info("max bandwidth with one sender with this setup: " + bandwidth)
+    try:
+        bandwidth = re.findall(r'bandwidth: (\d+)',bandwidth)[0] + " Mbit/s"
+        logging.info("Max bandwidth with one sender with this setup: " + bandwidth)
+    except:
+        logging.warn("bandwidth test failed: " + bandwidth)
 
     # ---------------
     # Start experiment with different parameter combinations
@@ -287,7 +294,6 @@ def main(config_name, download, yesFlag, noexperimentFlag):
             # setup source latency ranges for this configuration
             senderLatencies = sourceLatency(exp_config['senders'],exp_config['source_latency_range'][0],exp_config['source_latency_range'][1])
 
-            # TODO: test script on remote node first
             # enable/disable ipv6
             disableIPv6(exp_config["disable_ipv6"],allSSH)
 
@@ -301,7 +307,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 file = os.path.join(os.getcwd(),exp_config["result_dir"])
                 file = os.path.join(file,"config.yaml")
                 for k,v in allAddresses.items():
-                    retCode = subprocess.call(["scp","-P","22","-i",sshKey,file,v+":/local/config.yaml"])
+                    retCode = subprocess.call(["scp","-C","-P","22","-i",sshKey,file,v+":/local/config.yaml"])
                     if retCode:
                         logging.error("Uploading of config file to " + k + " did not work")
                         sys.exit(1)
@@ -316,6 +322,12 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 switchSSH.sendline("nohup python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_queue_measurements.py &")
                 switchSSH.prompt()            
                 response = switchSSH.before.decode("utf-8")
+                logging.info("switch response: " + response)
+                try:
+                    matches = re.findall(r'\[\d+\] (\d+)',response)
+                    print("matches: ",matches)
+                except:
+                    print("no matches")
 
                 pidPattern = re.compile("\[[0-9]+\] [0-9]+")
                 number = re.compile("[0-9]+")
@@ -323,7 +335,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 extendedPid = pidPattern.findall(response)[0]
                 pid_queue = number.findall(extendedPid)[1]
                 logging.info("Started queue measurement")
-                logging.debug("Process id of queue measurement: {}".format(pid_queue))
+                logging.info("Process id of queue measurement: {}".format(pid_queue))
                 
                 # Start 'receiver node' measurements
                 logging.info("Start sender and receiver measuremnts")
@@ -339,10 +351,10 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 # receive answers
                 for k,v in senderSSH.items():
                     v.prompt()
-                    logging.debug("started " + k + ": " + str(v.before.decode("utf-8")))
+                    logging.info("started " + k + ": " + str(v.before.decode("utf-8")))
 
                 recSSH.prompt()
-                logging.debug("started receiver: " + str(recSSH.before.decode("utf-8")))
+                logging.info("started receiver: " + str(recSSH.before.decode("utf-8")))
 
                 # end all tcpdump measurements
                 for k,v in allSSH.items():
@@ -357,8 +369,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 logging.info("Finished all measurements")
                 
                 # remove interfaces at senders, switch, receiver
-                # could be done only once for every parameter configuration, but we always
-                # want fastest speeds possible for transferring data to receiver node
+                # could be done only once for every parameter configuration
                 setupInterfaces(False,senderSSH,recSSH,switchSSH)
 
                 # create condensed tcpdump files on remote nodes
@@ -369,7 +380,12 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                     v.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/remote_logparser.py")
                     v.prompt()
                     logging.info("created condensed tcpdump file on " + k)
+                
+                #for k,v in allSSH.items():
+                #    if k == "switch": continue
+                #    v.prompt()
                 logging.info("finished all condensed remote tcpdump files")
+                time.sleep(20)
 
                 # download condensed folder files and queue measurements
                 if download:
@@ -394,17 +410,17 @@ def main(config_name, download, yesFlag, noexperimentFlag):
 
                     logging.info("Download completed")
 
-                    logging.info("uncompress tcpdump files...")
-                    condensedFolder = os.path.join(baseLocalFolder,"condensed/")
-                    logging.info("condensedFolder: " + condensedFolder)
-                    cmd = "cat " + condensedFolder + "*.tar | sudo tar -xvf - -i --directory " + condensedFolder
-                    output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                    logging.info("uncompressed: " + output)
+                    #logging.info("uncompress tcpdump files...")
+                    #condensedFolder = os.path.join(baseLocalFolder,"condensed/")
+                    #logging.info("condensedFolder: " + condensedFolder)
+                    #cmd = "cat " + condensedFolder + "*.tar | sudo tar -xvf - -i --directory " + condensedFolder
+                    #output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                    #logging.info("uncompressed: " + output)
 
-                    logging.info("remove compressed data")
-                    cmd = "find " + condensedFolder + "* -name '*.tar' -print | xargs sudo rm"
-                    output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                    logging.info("removing of compressed files: " + output)
+                    #logging.info("remove compressed data")
+                    #cmd = "find " + condensedFolder + "* -name '*.tar' -print | xargs sudo rm"
+                    #output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                    #logging.info("removing of compressed files: " + output)
 
                     logging.info("Find results of this run in: " + baseLocalFolder)
                     
@@ -412,10 +428,10 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                     logparsermain(exp_config["result_dir"])
                     logging.info("logparser finished")
 
-                    logging.info("remove condensed data files")
-                    cmd = "find " + condensedFolder + "* -name '*.csv' -print | xargs sudo rm"
-                    output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                    logging.info("removed condensed data files: " + output)
+                    #logging.info("remove condensed data files")
+                    #cmd = "find " + condensedFolder + "* -name '*.csv' -print | xargs sudo rm"
+                    #output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                    #logging.info("removed condensed data files: " + output)
                 else:
                     logging.info("Set flag to not download files")
 
