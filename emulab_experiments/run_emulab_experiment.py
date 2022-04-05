@@ -307,7 +307,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
         bandwidth = re.findall(r'bandwidth: (\d+)',bandwidth)[0] + " Mbit/s"
         logging.info("Max bandwidth with one sender with this setup: " + bandwidth)
     except:
-        logging.warn("bandwidth test failed: " + bandwidth)
+        logging.warning("bandwidth test failed: " + bandwidth)
 
     # ---------------
     # Start experiment with different parameter combinations
