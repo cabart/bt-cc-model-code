@@ -3,6 +3,13 @@ import re
 
 path = '/local/bandwidth-test.log'
 fout = open(path,'w')
+
+# ping to ensure route to host exists
+cmd = 'ping 10.0.0.2 -c 3'
+proc = subprocess.Popen(cmd.split(), stdout=fout, stderr=fout)
+proc.communicate
+
+# do iperf measurement
 cmd = 'iperf -c 10.0.0.2 -p 5002 -e -t 10 -f m'
 proc = subprocess.Popen(cmd.split(), stdout=fout, stderr=fout)
 

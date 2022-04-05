@@ -47,11 +47,13 @@ def addReceiverLimits(latency, use_red, capacity, queue_length, logger):
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","5:0","htb","default","1"])
             subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","5:0","classid","5:1","htb","rate",bandwidth,"burst","15k"])
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","6:","red","limit","1000000","min","30000","max","35000","avpkt","1500","burst","20","bandwidth",bandwidth,"probability","1"])
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","6:","handle","10:","netem","delay",lat,"limit",limit])
+            #subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","6:","handle","10:","netem","delay",lat,"limit",limit])
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","6:","handle","10:","netem","limit",limit])
         else:
             subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"root","handle","5:0","htb","default","1"])
             subprocess.check_output(["sudo","tc","class","add","dev",iface,"parent","5:0","classid","5:1","htb","rate",bandwidth,"burst","15k"])
-            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","10:","netem","delay",lat,"limit",limit])
+            #subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","10:","netem","delay",lat,"limit",limit])
+            subprocess.check_output(["sudo","tc","qdisc","add","dev",iface,"parent","5:1","handle","10:","netem","limit",limit])
         
     except subprocess.CalledProcessError as e:
         # adding failed, most likely because there already is a root qdisc
@@ -96,13 +98,15 @@ def main():
 
         # add latency for each sender
         if source_latency:
-            addSendersLimits(config["sending_behavior"], logger)
+            #addSendersLimits(config["sending_behavior"], logger)
+            pass
         addReceiverLimits(latency, use_red, capacity, queue_length, logger)
 
     elif args.d:
         logger.info("Remove switch interfaces")
         if source_latency:
-            removeSendersLimits(config["sending_behavior"], logger)
+            #removeSendersLimits(config["sending_behavior"], logger)
+            pass
         removeReceiverLimits(logger)
     else:
         parser.print_help()
