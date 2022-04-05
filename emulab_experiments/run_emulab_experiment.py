@@ -71,14 +71,14 @@ def setupInterfaces(start,senderSSH,recSSH,switchSSH):
         flag = " -d"
         logging.info("Removing delay and capacity limits at all interfaces")
     
-    #for k,v in senderSSH.items():
-    #    v.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
-    #    v.prompt()
-    #    message = v.before.decode("utf-8")
-    #    logging.info(message)
+    for k,v in senderSSH.items():
+        v.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
+        v.prompt()
+        message = v.before.decode("utf-8")
+        logging.info(message)
     
-    #recSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
-    #recSSH.prompt()
+    recSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
+    recSSH.prompt()
 
     switchSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_setup_links.py" + flag)
     switchSSH.prompt()
@@ -436,8 +436,8 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                     logging.info("remove condensed data files")
                     condensedFolder = os.path.join(baseLocalFolder,"condensed/")
                     cmd = "find " + condensedFolder + "* -name '*.csv' -print | xargs sudo rm"
-                    output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                    logging.info("removed condensed data files: " + output)
+                    #output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                    #logging.info("removed condensed data files: " + output)
                 else:
                     logging.info("Set flag to not download files")
 
