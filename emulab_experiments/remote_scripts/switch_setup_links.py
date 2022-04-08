@@ -102,6 +102,7 @@ def main():
     bw_delay_product = config["inferred"]["bw_delay_product"]
     link_size = bw_delay_product * RED_CORRECTION_FACTOR[switch_buffer] if use_red else bw_delay_product
     max_queue_size = int(switch_buffer * bw_delay_product) + bw_delay_product
+    logger.info(f"Queue_length {queue_length}, max_queue_size {max_queue_size}")
     link_size = int(link_size*1514)
     max_queue_size = int(max_queue_size*1514)
 
