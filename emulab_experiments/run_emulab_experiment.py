@@ -72,16 +72,18 @@ def setupInterfaces(start,senderSSH,recSSH,switchSSH):
         logging.info("Removing delay and capacity limits at all interfaces")
     
     for k,v in senderSSH.items():
-        v.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
+        v.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
         v.prompt()
         message = v.before.decode("utf-8")
-        logging.info(message)
+        logging.info(f"{k}: {message}")
     
-    recSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
+    recSSH.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
     recSSH.prompt()
 
-    switchSSH.sendline("python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_setup_links.py" + flag)
+    switchSSH.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_setup_links.py" + flag)
     switchSSH.prompt()
+    message = v.before.decode("utf-8")
+    logging.info(f"switch setup: {message}")
     logging.info("All interface setups done")
 
 
@@ -116,6 +118,33 @@ def addBBR(senderSSH):
     matches = pattern.findall(message)[0].split()
     logging.info("supported CCAs on sender nodes: " + str(matches))
 
+def addBBR2(senderSSH, emuServer:emulabConnection):
+    logging.info("enable BBR2 on all senders")
+    for k,v in senderSSH.items():
+        logging.debug(f"enable BBR2 on {k}")
+        v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_add_bbr2.sh')
+        v.prompt()
+        message = v.before.decode("utf-8")
+        logging.info(f"{k}: {message}")
+
+    # wait for all senders to restart...
+    logging.info("Wait until all sender pcs rebooted")
+    time.sleep(60)
+    emuServer.restartSliver()
+    time.sleep(60)
+    emuServer.sliverWaitUntilReady()
+
+    # TODO: Reconnect SSH connections
+
+    for k,v in senderSSH.items():
+        v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_get_congestion_protocols.sh')
+        v.prompt()
+        message = v.before.decode("utf-8")
+        pattern = re.compile("net.ipv4.tcp_available_congestion_control = (.+)\r")
+        matches = pattern.findall(message)[0].split()
+        logging.info(f"supported CCAs on sender node {k}: {matches}")
+    logging.info("BBR2 setup done")
+    
 
 def downloadFiles(addresses,sshKey,remoteFolder,localFolder):
     for k,v in addresses.items():
@@ -191,7 +220,6 @@ def main(config_name, download, yesFlag, noexperimentFlag):
         )
     )
     while not yesFlag:
-        #logging.info("Experiment config:\n\tConfig name: " + config_name + "\n\t#Combinations: " + str(len(config['param_combinations'])) + "\n\t#Senders (max): " + str(maxSender) + "\n\t#bandwidth (max): " + str(maxCapacity) + "\n\t#Runs per configuration: " + str(config['experiment_parameters']['runs']))
         inp = input("Do you want to run this experiment config?\n [y/n]:") 
         ret = checkUserInput(inp)
         if ret is None:
@@ -289,6 +317,9 @@ def main(config_name, download, yesFlag, noexperimentFlag):
     # Add BBR support for all sender nodes
     addBBR(senderSSH)
 
+    # Add BBR2 support for all sender nodes
+    #addBBR2(senderSSH,emuServer)
+
     # Get information about hardware
     types = emuServer.getPCTypes()
     logging.info('used pc types in this experiment' + str(types))
@@ -346,7 +377,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 logging.info("start measuring on switch, sender and receiver")
 
                 # Start switch measurements
-                switchSSH.sendline("nohup python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_queue_measurements.py &")
+                switchSSH.sendline("sudo nohup python3 /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_queue_measurements.py &")
                 switchSSH.prompt()            
                 response = switchSSH.before.decode("utf-8")
                 try:
@@ -359,7 +390,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 logging.info("Process id of queue measurement: {}".format(pid_queue))
                 
                 # Start 'receiver node' measurements
-                logging.info("Start sender and receiver measuremnts")
+                logging.info("Start sender and receiver measurements")
                 recSSH.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_measurements.sh")
                 
                 time.sleep(1) # make sure the server is running on receiver node
@@ -406,7 +437,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 #    if k == "switch": continue
                 #    v.prompt()
                 logging.info("finished all condensed remote tcpdump files")
-                time.sleep(20)
+                time.sleep(30)
 
                 # download condensed folder files and queue measurements
                 if download:
