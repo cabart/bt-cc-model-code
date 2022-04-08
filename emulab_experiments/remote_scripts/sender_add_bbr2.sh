@@ -8,4 +8,4 @@ sudo apt-get update | sudo tee -a /local/node.log >> /dev/null
 code2=$?
 sudo apt-get install -y linux-image-liquorix-amd64 linux-headers-liquorix-amd64 | sudo tee -a /local/node.log >> /dev/null
 code3=$?
-echo "$code1,$code2,$code3,Done"
+echo "$code1,$code2,$code3,AllDoneBBR2"
