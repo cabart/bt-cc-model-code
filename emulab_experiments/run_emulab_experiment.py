@@ -17,6 +17,7 @@ import argparse
 import random
 from pexpect import pxssh
 import subprocess
+import asyncio
 
 from create_rspec import *
 from generate_config import *
@@ -24,17 +25,134 @@ from emulab_connection import *
 from logparser import external_main as logparsermain
 
 # use a root logger
+# change logging level by setting -v flag
 import logging
 logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(name)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
 
-class ExperimentConnections:
-    def __init__(self):
-        return
 
+class ExperimentConnections:
+    
+    senderSSH = None
+    receiverSSH = None
+    switchSSH = None
+    loggedIn = False
+
+    def __init__(self, ssh_key, num_sender, port, experiment_name, username):
+        '''
+            Used to connect to all experiment nodes using ssh. Does connect to
+            to all Nodes when initiating. Use the logout() method before exiting
+            the program.
+        '''
+        self.ssh_key = ssh_key
+        self.num_sender = num_sender
+        self.port = port
+        self.experiment_name = experiment_name
+        self.username = username
+        self.connect()
+    
+    def connectSingle(self, nodename:str):
+        '''
+            Connect to single node to of experiment
+
+            Args:
+                nodename (str): Name of the node as stated in the rpsec file
+
+            Returns:
+                pxssh object with the ssh connection if connection did work,
+                None otherwise
+        '''
+        try:
+            node = f"{nodename}.{self.experiment_name}.emulab-net.emulab.net"
+            s = pxssh.pxssh(options={"StrictHostKeyChecking": "no"},timeout=30)
+            s.login(node,self.username,port=self.port,ssh_key=self.ssh_key,sync_multiplier=2)
+            logging.debug(f"connect {node}:{s}")
+            return s
+        except pxssh.ExceptionPxssh as e:
+            logging.warning(f"Could not establish ssh connection to {nodename}: {e}")
+            return None
+
+    def connect(self):
+        '''
+            Setup connection to all experiment nodes
+        '''
+        allConnected = True
+        # connect to sender nodes
+        self.senderSSH = dict()
+        for i in range(1,self.num_sender+1):
+            cur = f"h{i}"
+            s = self.connectSingle(cur)
+            if s is None: allConnected = False
+            self.senderSSH.update({cur: s})
+
+        self.receiverSSH = self.connectSingle("hdest")
+        self.switchSSH = self.connectSingle("switch")
+
+        self.loggedIn = True
+
+        if (self.receiverSSH is None) or (self.switchSSH is None):
+            allConnected = False
+        
+        return allConnected
+
+
+    def logout(self):
+        '''
+            Logout ssh connctions to all experiment nodes
+        '''
+        for k,v in self.getAll().items():
+            try:
+                v.logout()
+            except:
+                logging.info(f"Could not log out of {k}")
+
+        self.senderSSH = None
+        self.receiverSSH = None
+        self.switchSSH = None
+        self.loggedIn = False
+
+    def getAll(self):
+        '''
+            Get SSH connections to all experiment node as dictionary.
+            The keys are the nodenames and the values a pxssh object
+        '''
+        if (self.senderSSH is not None) and (self.receiverSSH is not None) and (self.switchSSH is not None):
+            allSSH = self.senderSSH.copy()
+            allSSH.update({"hdest": self.receiverSSH, "switch": self.switchSSH})
+            return allSSH
+        else:
+            logging.error("Some ssh connections do not exist, should connect first")
+
+    def getSender(self):
+        '''
+            Get SSH connections to all experiment sender as dictionary.
+            The keys are the nodenames and the values a pxssh object
+        '''
+        if self.senderSSH is None:
+            logging.error("Sender ssh does not exist, should connect first")
+        else:
+            return self.senderSSH
+
+    def getReceiver(self):
+        ''' Get SSH connection to receiver node as pxssh object'''
+        if self.receiverSSH is None:
+            logging.error("Sender ssh does not exist, should connect first")
+        else:
+            return self.receiverSSH
+
+    def getSwitch(self):
+        ''' Get SSH connection to switch node as pxssh object'''
+        if self.switchSSH is None:
+            logging.error("Sender ssh does not exist, should connect first")
+        else:
+            return self.switchSSH
+    
+    def isLoggedIn(self):
+        return self.loggedIn
+    
 
 def sourceLatency(nSender, minLat, maxLat):
     '''
-        Generates random latencies for each sender.
+        Generates pseude-random latencies for each sender.
 
         Args:
             nSender: Number of senders
@@ -53,7 +171,7 @@ def sourceLatency(nSender, minLat, maxLat):
     return lat
 
 
-def setupInterfaces(start,senderSSH,recSSH,switchSSH):
+def setupInterfaces(start,sshConnections:ExperimentConnections):
     '''
         Setup all interfaces of experiment at senders, switch and receiver
 
@@ -63,28 +181,28 @@ def setupInterfaces(start,senderSSH,recSSH,switchSSH):
         Returns:
             Nothing
     '''
-    logging.info("Setup interfaces")
+    logging.info("Setup interfaces at all experiment nodes...")
     if start:
-        flag = " -a"
+        flag = "-a"
         logging.info("Adding delay and capacity limits at all interfaces")
     else:
-        flag = " -d"
+        flag = "-d"
         logging.info("Removing delay and capacity limits at all interfaces")
     
-    for k,v in senderSSH.items():
-        v.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py" + flag)
+    for k,v in sshConnections.getSender().items():
+        v.sendline(f"sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_setup_links.py {flag}")
         v.prompt()
         message = v.before.decode("utf-8")
         logging.info(f"{k}: {message}")
     
-    recSSH.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py" + flag)
-    recSSH.prompt()
+    sshConnections.getReceiver().sendline(f"sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_setup_links.py {flag}")
+    sshConnections.getReceiver().prompt()
 
-    switchSSH.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_setup_links.py" + flag)
-    switchSSH.prompt()
+    sshConnections.getSwitch().sendline(f"sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_setup_links.py {flag}")
+    sshConnections.getSwitch().prompt()
     message = v.before.decode("utf-8")
     logging.info(f"switch setup: {message}")
-    logging.info("All interface setups done")
+    logging.info("All interface setups done.")
 
 
 def disableIPv6(disable:bool,allSSH):
@@ -100,59 +218,97 @@ def disableIPv6(disable:bool,allSSH):
     
     for k,v in allSSH.items():
         logging.debug("disable/enable ipv6 on " + k)
-        v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_disable_ipv6.sh ' + val)
+        v.sendline(f"bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_disable_ipv6.sh {val}")
         v.prompt()
         message = v.before.decode("utf-8")
-        logging.debug("ipv6:" + str(message))
+        logging.debug(f"ipv6: {message}")
 
 
-def addBBR(senderSSH):
-    logging.info("enable bbr on all senders")
-    for k,v in senderSSH.items():
-        logging.debug("enable bbr on " + k)
+def addBBR(allSender):
+    '''
+        Enable BBR on all sender nodes
+
+        Args:
+            sshConnections (ExperimentConnections)
+    '''
+    logging.info("Enable BBR on all senders")
+    for k,v in allSender.items():
+        logging.debug(f"Enable BBR on {k}")
         v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_add_bbr.sh')
         v.prompt()
         message = v.before.decode("utf-8")
     # only show output for last sender
     pattern = re.compile("net.ipv4.tcp_available_congestion_control = (.+)\r")
     matches = pattern.findall(message)[0].split()
-    logging.info("supported CCAs on sender nodes: " + str(matches))
+    logging.info(f"Supported CCAs on sender nodes: {matches}")
 
-def addBBR2(senderSSH, emuServer:emulabConnection):
-    logging.info("enable BBR2 on all senders")
-    for k,v in senderSSH.items():
-        logging.debug(f"enable BBR2 on {k}")
+
+def addBBR2(sshConnections:ExperimentConnections):
+    '''
+        Enable BBR2 on all sender nodes. Sender nodes are getting rebooted to complete
+        installation. Liquorix kernel is being installed on all sender nodes.
+        Wait for all ssh connections to reconnect, signaling a succuessful reboot before advancing.
+
+        Args:
+            sshConnections (ExperimentConnections)
+    '''
+    logging.info("Enable BBR2 on all senders...")
+    for k,v in sshConnections.getSender().items():
+        logging.info(f"Enable BBR2 on {k}")
         v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_add_bbr2.sh')
-        v.prompt()
+        #v.prompt()
+        returnCodes = v.expect(["AllDoneBBR2"],timeout=240)
+        logging.info(f"Return codes of BBR2 installation (should all be 0): {returnCodes}")
         message = v.before.decode("utf-8")
         logging.info(f"{k}: {message}")
 
-    # wait for all senders to restart...
+    # Reboot all sender nodes
+    for k,v in sshConnections.getSender().items():
+        logging.info(f"Restart {k}")
+        v.sendline('sudo reboot')
+
+    # Wait for all senders to restart...
     logging.info("Wait until all sender pcs rebooted")
-    time.sleep(60)
-    emuServer.restartSliver()
-    time.sleep(60)
-    emuServer.sliverWaitUntilReady()
 
-    # TODO: Reconnect SSH connections
+    time.sleep(10) # Wait to ensure reboot process is not aborted (very unlikely)
+    sshConnections.logout()
 
-    for k,v in senderSSH.items():
+    # Wait for host pcs to restart
+    time.sleep(30)
+    logging.info("Ignore all warnings that follow")
+    logging.info("If reconnecting fails for more than a minute, something has likely gone wrong.")
+    while not sshConnections.connect():
+        logger.info("Reconnecting failed! Try again in 30 seconds")
+        sshConnections.logout()
+        time.sleep(30)
+    logger.info("Reconnected to all host PCs!")
+
+    logging.info("Check if BBR2 was installed successfully...")
+    logging.info("If installed correct, BBR2 should be listed as an option:")
+    for k,v in sshConnections.getSender().items():
         v.sendline('bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_get_congestion_protocols.sh')
         v.prompt()
         message = v.before.decode("utf-8")
         pattern = re.compile("net.ipv4.tcp_available_congestion_control = (.+)\r")
         matches = pattern.findall(message)[0].split()
-        logging.info(f"supported CCAs on sender node {k}: {matches}")
-    logging.info("BBR2 setup done")
+        logging.info(f"Supported CCAs on sender node {k}: {matches}")
+    logging.info("BBR2 setup done.")
     
 
 def downloadFiles(addresses,sshKey,remoteFolder,localFolder):
+    '''
+        Download all files from remote server folder
+
+        Args:
+            addresses: Dictionary of remote pc addresses
+            sshKey: location off sshkey file
+            remoteFolder: folder on remote pc from which to download all files
+            localFolder: folder on local pc where downloaded files should be placed into
+    '''
     for k,v in addresses.items():
-        #print("scp -r -P 22 -i ",sshKey,v+":"+remoteFolder,localFolder)
         retCode = subprocess.call(["scp","-r","-C","-P","22","-i",sshKey,v+":"+remoteFolder,localFolder])
         if retCode:
-            logging.warning("downlaoding of config file from " + k + " did not work")
-            sys.exit(1)
+            logging.error(f"Downloading of file from {k} did not work ({remoteFolder})")
 
 
 def checkUserInput(inp:str):
@@ -175,6 +331,18 @@ def checkUserInput(inp:str):
 
 
 def main(config_name, download, yesFlag, noexperimentFlag):
+    '''
+        Main function of experiment. Most important stuff happens here.
+
+        Args:
+            config_name: location of config file
+            download (boolean): Defines if results should be downloaded to local pc.
+                Don't download results to solve time when debugging
+            yesFlag (boolean): Automatically start and stop experiment without further
+                user input
+            noexperimentFlag (boolean): Skip the experiment measurements. Use this for
+                debugging, or to get emulab hardware for manual inspections or experiments
+    '''
     logging.debug("Setting up configuration")
 
     config = get_config(config_name)
@@ -245,7 +413,6 @@ def main(config_name, download, yesFlag, noexperimentFlag):
     rspec = createUnboundRspec(maxSender, maxCapacity)
 
     # start experiment hardware and wait until ready
-    # TODO: adapt experiment duration to number of configs and runs
     if emuServer.startExperiment(duration=4, rspec=rspec):
         logging.info("Experiment is ready\n")
     else:
@@ -253,72 +420,39 @@ def main(config_name, download, yesFlag, noexperimentFlag):
         sys.exit(1)
     
     # Connect to all experiment nodes (sender, switch, receiver)
-    connectAll = True
     sshKey = os.path.join(emulab_config["home"],emulab_config["ssh_key_location"])
     numSender = maxSender
 
-    def connectSSH(nodename, port="22"):
-        node = nodename + "." + experiment_name + ".emulab-net.emulab.net"
-        s = pxssh.pxssh(options={"StrictHostKeyChecking": "no"},timeout=30)
-        s.login(node,emulab_config["username"],port=port,ssh_key=sshKey,sync_multiplier=2)
-        return s
-    
-    senderSSH = dict()
-    for i in range(1,numSender+1):
-        try:
-            sender = "h" + str(i)
-            s = connectSSH(sender)
-            senderSSH.update({sender: s})
-        except pxssh.ExceptionPxssh as e:
-            connectAll = False
-            logging.error("Login to node failed: sender" + str(i))
-            logging.error(e)
+    # sshKey, numSender, port, experiment_name,username
+    sshConnections = ExperimentConnections(sshKey,numSender,22,experiment_name,emulab_config["username"])
 
-    # connect to receiver
-    try:
-        recSSH = connectSSH("hdest")
-    except pxssh.ExceptionPxssh as e:
-        connectAll = False
-        logging.error("Login to receiver node failed: " + e)
-
-    # connect to switch
-    try:
-        switchSSH = connectSSH("switch")
-    except pxssh.ExceptionPxssh as e:
-        connectAll = False
-        logging.error("Login to switch node failed: " + e)
-
-    # create a dictionary for all nodes
-    allSSH = senderSSH.copy()
-    allSSH.update({"hdest": recSSH, "switch": switchSSH})
-    logging.debug("all ssh connections: " + str(allSSH))
-
-    # all addresses for scp use
+    # all node addresses for scp use
     allAddresses = dict()
-    for k in allSSH.keys():
+    for k in sshConnections.getAll().keys():
         address = emulab_config["username"] + "@" + k + "." + experiment_name + ".emulab-net.emulab.net"
         allAddresses.update({k:address})
-    logging.debug("All addresses: " + str(allAddresses))
+    logging.debug(f"All addresses: {allAddresses}")
 
-    # check all connections
+    # check all connections, useful for debugging of ssh connections
     def uptimeCheckSSH(s:pxssh.pxssh):
         s.sendline("uptime")
         s.prompt()
         return str(s.before.decode("utf-8"))
 
     # Check if all connections worked and start experiment
-    if connectAll:
+    if sshConnections.isLoggedIn():
         # Check all connections by requesting their uptime
-        for k,v in allSSH.items():
-            logging.debug("Test " + k + " uptime: " + uptimeCheckSSH(v))
+        for k,v in sshConnections.getAll().items():
+            logging.debug(f"Test {k} uptime: {uptimeCheckSSH(v)}")
     else:
         logging.error("Some ssh connections did not work!")
 
     # Add BBR support for all sender nodes
-    addBBR(senderSSH)
+    addBBR(sshConnections.getSender())
 
     # Add BBR2 support for all sender nodes
-    #addBBR2(senderSSH,emuServer)
+    # TODO: only do this when BBR2 is used in experiment
+    addBBR2(sshConnections)
 
     # Get information about hardware
     types = emuServer.getPCTypes()
@@ -326,11 +460,11 @@ def main(config_name, download, yesFlag, noexperimentFlag):
 
     # test unlimited bandwidth with one host
     logging.info("test theoretical bandwidth of connection...")
-    recSSH.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_test_bandwidth.py')
+    sshConnections.getReceiver().sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_test_bandwidth.py')
     time.sleep(2) # TODO: test if this avoids error which occurs sometimes
-    someSender = list(senderSSH.items())[0][1]
+    someSender = list(sshConnections.getSender().items())[0][1]
     someSender.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_test_bandwidth.py')
-    recSSH.prompt()
+    sshConnections.getReceiver().prompt()
     someSender.prompt()
     logging.info("Test done")
     bandwidth = someSender.before.decode('utf-8')
@@ -353,7 +487,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
             senderLatencies = sourceLatency(exp_config['senders'],exp_config['source_latency_range'][0],exp_config['source_latency_range'][1])
 
             # enable/disable ipv6
-            disableIPv6(exp_config["disable_ipv6"],allSSH)
+            disableIPv6(exp_config["disable_ipv6"],sshConnections.getAll())
 
             # Do all runs for a specific configuration
             for i in range(config['experiment_parameters']['runs']):
@@ -372,14 +506,14 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 logging.info("Experiment config successfully uploaded to every experiment node")
             
                 # Setup interfaces at senders, switch and receiver
-                setupInterfaces(True,senderSSH,recSSH,switchSSH)
+                setupInterfaces(True,sshConnections)
                 
                 logging.info("start measuring on switch, sender and receiver")
 
                 # Start switch measurements
-                switchSSH.sendline("sudo nohup python3 /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_queue_measurements.py &")
-                switchSSH.prompt()            
-                response = switchSSH.before.decode("utf-8")
+                sshConnections.getSwitch().sendline("sudo nohup python3 /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/switch_queue_measurements.py &")
+                sshConnections.getSwitch().prompt()            
+                response = sshConnections.getSwitch().before.decode("utf-8")
                 try:
                     pid_queue = re.findall(r'\[\d+\] (\d+)',response)[0]
                 except:
@@ -391,46 +525,46 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 
                 # Start 'receiver node' measurements
                 logging.info("Start sender and receiver measurements")
-                recSSH.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_measurements.sh")
+                sshConnections.getReceiver().sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_measurements.sh")
                 
                 time.sleep(1) # make sure the server is running on receiver node
                 # Start 'sender nodes' measurements
-                for k,v in senderSSH.items():
+                for k,v in sshConnections.getSender().items():
                     v.sendline("bash /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_measurements.sh")
                 
                 logging.info("Wait for at least {} seconds for measurements to complete".format(exp_config["send_duration"]))
                 
                 # receive answers
-                for k,v in senderSSH.items():
+                for k,v in sshConnections.getSender().items():
                     v.prompt()
                     logging.info("started " + k + ": " + str(v.before.decode("utf-8")))
 
-                recSSH.prompt()
-                logging.info("started receiver: " + str(recSSH.before.decode("utf-8")))
+                sshConnections.getReceiver().prompt()
+                logging.info("started receiver: " + str(sshConnections.getReceiver().before.decode("utf-8")))
 
                 # end all tcpdump measurements
-                for k,v in allSSH.items():
+                for k,v in sshConnections.getAll().items():
                     logging.info("end tcpdump on " + k)
                     v.sendline('sudo pkill -SIGTERM -f tcpdump')
                     v.prompt()
                 
-                switchSSH.sendline("sudo kill -SIGTERM " + pid_queue)
-                switchSSH.prompt()
-                logging.info("Stopped queue measurement: " + switchSSH.before.decode("utf-8"))
+                sshConnections.getSwitch().sendline("sudo kill -SIGTERM " + pid_queue)
+                sshConnections.getSwitch().prompt()
+                logging.info("Stopped queue measurement: " + sshConnections.getSwitch().before.decode("utf-8"))
 
                 logging.info("Finished all measurements")
                 
                 # remove interfaces at senders, switch, receiver
                 # could be done only once for every parameter configuration
-                setupInterfaces(False,senderSSH,recSSH,switchSSH)
+                setupInterfaces(False,sshConnections)
 
                 # create condensed tcpdump files on remote nodes
                 # TODO: Do this in parallel
                 logging.info("start creating condensed tcpdump files")
-                for k,v in allSSH.items():
+                for k,v in sshConnections.getAll().items():
                     if k == "switch": continue
                     v.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/remote_logparser.py")
-                    v.prompt()
+                    v.prompt(timeout=240) # add timeout since remote_logparser might take some time to complete
                     logging.info("created condensed tcpdump file on " + k)
                 
                 #for k,v in allSSH.items():
@@ -467,8 +601,8 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                     logging.info("remove condensed data files")
                     condensedFolder = os.path.join(baseLocalFolder,"condensed/")
                     cmd = "find " + condensedFolder + "* -name '*.csv' -print | xargs sudo rm"
-                    #output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
-                    #logging.info("removed condensed data files: " + output)
+                    output = subprocess.check_output(cmd,shell=True,encoding="utf-8")
+                    logging.info("removed condensed data files: " + output)
                 else:
                     logging.info("Set flag to not download files")
 
@@ -486,8 +620,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
     # ---------------
     
     # logout from all ssh connections
-    for k,v in allSSH.items():
-        v.logout()
+    sshConnections.logout()
 
     # terminate experiment
     logging.info("All experiments done")

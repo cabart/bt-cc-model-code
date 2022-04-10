@@ -3,7 +3,6 @@
 # senderX -> switch interfaces
 
 import argparse
-import queue
 import yaml
 import sys
 import subprocess

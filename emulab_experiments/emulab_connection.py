@@ -1,5 +1,6 @@
 # Code is loosely based on https://gitlab.flux.utah.edu/emulab/emulab-devel/-/tree/master/protogeni/tutorial and https://gitlab.flux.utah.edu/emulab/emulab-stable/-/tree/master/protogeni/test
-# Goal is to make it object-oriented so it is easier and flexible to handle, and implement it so it works in python3
+# It was rewritten with the intention of making it object-oriented in order to be easier
+# and more flexible to handle. Additionally it runs in Python 3 only
 
 # Note: has to be run with sudo permissions
 
@@ -8,12 +9,6 @@
 # General notes for implementer:
 # after initialization only self.cred (user credentials) and self.sliceurn are known
 # self.slice and self.sliver have always to be checked for (if not null or even better if they have expired)
-
-# possible additions:
-# - binding more users to a single slice (not really neccessairy)
-# - RenewSlice at sa (extend expiration date)
-# - Check version 2 compatibility, also on server side
-# - should ask user what to do if sliver already exists: take it or create new? (if new maybe have to wait until it is ready)
 
 from getpass import getpass
 import sys
@@ -30,6 +25,7 @@ import http.client as httplib
 
 import logging
 
+logger = logging.getLogger("root.emulab_connection")
 
 class InitializeError(Exception):
     """Exception when initializing emulab connection class"""
@@ -49,18 +45,18 @@ class emulabConnection:
 
     # all locations relative to home location, home location has to be an absolute path
     def __init__(self, user, home_loc=None, certificate_loc='.ssl/cloudlab.pem', password_loc='.ssl/password', experiment_name="emulab-experiment"):
-        logging.info("Start emulab connection setup")
+        logger.info("Start emulab connection setup")
 
         # setup home path
         if home_loc is None:
             username = os.environ.get('SUDO_USER', os.environ.get('USERNAME'))
             self.HOME = os.path.expanduser(f'~{username}')
-            logging.info("No home directory specified. '" + self.HOME + "' is used as home directory now")
+            logger.info("No home directory specified. '" + self.HOME + "' is used as home directory now")
             if self.HOME is None:
                 raise InitializeError("Could not find a username variable in terminal, should specify a home directory")
         else:
             self.HOME = home_loc
-            logging.info("Home directory: " + self.HOME)
+            logger.info("Home directory: " + self.HOME)
 
         self.user = user
         self.certificate_loc = os.path.join(self.HOME,certificate_loc)
@@ -80,19 +76,19 @@ class emulabConnection:
             try:
                 passphrase = open(self.password_loc).readline()
                 if passphrase == "":
-                    logging.info("empty password file, may cause problem")
+                    logger.info("empty password file, may cause problem")
                     self.password = getpass("Emulab password:")
                 else:
                     self.password = passphrase[:-1]
             except IOError:
-                logging.error("Error when reading password file")
+                logger.error("Error when reading password file")
                 self.password = getpass("Emulab password:")
         else:
-            logging.error("password file does not exist")
+            logger.error("password file does not exist")
             self.password = getpass("Emulab password:")
 
         # get self credential, used for most calls at sa (slice authority)
-        logging.debug("Getting credentials of user")
+        logger.debug("Getting credentials of user")
         cred = self.get_self_credential()
         if cred is None:
             raise InitializeError("Could not get self credential when setting up emulab connection")
@@ -108,12 +104,12 @@ class emulabConnection:
             # TODO: maybe should check if there are any keys at all
             self.keys = response["value"]
 
-        logging.info("Successfully setup emulab connection!\n")
+        logger.info("Successfully setup emulab connection!\n")
 
 
     def do_method(self, module, method, params, version=None):
         if module not in self.xmlrpc_server or module not in self.server_path:
-            logging.error("Invalid call at: " + module + " in 'do_method' call")
+            logger.error("Invalid call at: " + module + " in 'do_method' call")
             raise Exception("Invalid server module")
         else:
             addr = self.xmlrpc_server[module]
@@ -124,7 +120,7 @@ class emulabConnection:
         if version:
             uri += "/" + version
         url = urlsplit(uri,"https")
-        logging.debug("call at uri: " + uri + ", url: " + str(url) + ", method: " + method)
+        logger.debug("call at uri: " + uri + ", url: " + str(url) + ", method: " + method)
 
         port = url.port
         
@@ -146,40 +142,40 @@ class emulabConnection:
                 server.request("POST", url.path, xmlrpclib.dumps((params,), method))
                 response = server.getresponse()
                 if response.status == 503:
-                    logging.debug("Try again in a few seonds")
+                    logger.debug("Try again in a few seonds")
                     time.sleep(5.0)
                     continue
                 elif response.status != 200:
-                    logging.error("connection error: " + str(response.status) + " " + str(response.reason))
+                    logger.error("connection error: " + str(response.status) + " " + str(response.reason))
                     return (-1, None)
                 else:
                     response = xmlrpclib.loads(response.read())[0][0]
                     break
             except httplib.HTTPException:
-                logging.error("http exception")
+                logger.error("http exception")
                 return (-1, None)
             except xmlrpclib.Fault:
                 e = sys.exc_info()[1]
                 if e.faultCode == 503:
-                    logging.debug("Retrying in a few seconds")
+                    logger.debug("Retrying in a few seconds")
                     time.sleep(5.0)
                     continue
                 else:
-                    logging.error("xmlrpclib error")
+                    logger.error("xmlrpclib error")
                     return (-1, None)
             except ssl.CertificateError:
                 e = sys.exc_info()[1]
-                logging.error("Warning: possible certificate host name mismatch")
-                logging.error("Consult: http://www.protogeni.net/trac/protogeni/wiki/HostNameMismatch")
-                logging.error(e)
+                logger.error("Warning: possible certificate host name mismatch")
+                logger.error("Consult: http://www.protogeni.net/trac/protogeni/wiki/HostNameMismatch")
+                logger.error(e)
                 return (-1, None)
             except Exception as e:
-                logging.error("Some error has occured during emulab server connection:" + str(traceback.format_exc()))
+                logger.error("Some error has occured during emulab server connection:" + str(traceback.format_exc()))
 
         # If server call successfull
         # Parse the response
         if response["code"] and len(response["output"]):
-            logging.debug(response["output"])
+            logger.debug(response["output"])
         
         rval = response["code"]
 
@@ -187,7 +183,7 @@ class emulabConnection:
         if rval:
             if response["value"]:
                 rval = response["value"]
-                logging.warning("Error code at server: " + str(response["value"]))
+                logger.warning("Error code at server: " + str(response["value"]))
         return (rval, response)
     
 
@@ -197,7 +193,7 @@ class emulabConnection:
         # code 14 means busy, maybe should also do this for code 16 (in progress)
         while count > 0 and response and response["code"] == 14: # code 14 means busy
             count -= 1
-            logging.info("try again in a few seconds")
+            logger.info("Server is busy: Try again in a few seconds...")
             time.sleep(5.0)
             rval, response = self.do_method(suffix, method, params, version)
         return (rval, response)
@@ -206,7 +202,7 @@ class emulabConnection:
     def get_self_credential(self):
         rval, response = self.do_method_retry("sa", "GetCredential", {})
         if rval:
-            logging.error("Could not get my credential")
+            logger.error("Could not get my credential")
             return None
         else:
             return response["value"]
@@ -215,10 +211,10 @@ class emulabConnection:
     def getVersion(self):
         rval, response = self.do_method_retry("sa", "GetVersion", {})
         if rval:
-            logging.error("Could not obtain API version")
+            logger.error("Could not obtain API version")
             return None
         else:
-            logging.debug("Server version:" + str(response["value"]))
+            logger.debug("Server version:" + str(response["value"]))
             return response["value"]
 
 
@@ -230,11 +226,11 @@ class emulabConnection:
 
         rval, response = self.do_method_retry("sa", "Resolve", params)
         if rval:
-            logging.warn("Slice does not exist yet or has expired")
+            logger.warning("Slice does not exist yet or has expired")
             return False
         else:
-            logging.debug("Slice already exists")
-            #logging.debug(str(response["value"]))
+            logger.debug("Slice already exists")
+            #logger.debug(str(response["value"]))
             return True
     
 
@@ -259,14 +255,14 @@ class emulabConnection:
 
         rval, response = self.do_method_retry("sa", "Register", params)
         if rval:
-            logging.error("Could not create slice:")
-            logging.error(str(rval))
-            logging.error(str(response))
+            logger.error("Could not create slice:")
+            logger.error(str(rval))
+            logger.error(str(response))
             return 1 # or maybe raise exception
         else:
             self.slice = response["value"]
-            logging.info("Slice successfully created")
-            #logging.info("Slice created: " + str(myslice))
+            logger.info("Slice successfully created")
+            #logger.info("Slice created: " + str(myslice))
             return 0
 
 
@@ -280,11 +276,11 @@ class emulabConnection:
 
         rval,response = self.do_method_retry("sa", "RenewSlice", params)
         if rval:
-            logging.error("Could not renew slice at the SA")
+            logger.error("Could not renew slice at the SA")
             return False
         else:
             self.slice = response["value"]
-            logging.debug("Slice has been renewed")
+            logger.debug("Slice has been renewed")
             return True
 
     def getSliceCredential(self):
@@ -295,10 +291,10 @@ class emulabConnection:
 
         rval, response = self.do_method_retry("sa", "GetCredential", params)
         if rval:
-            logging.error("Could not get slice credentials")
+            logger.error("Could not get slice credentials")
             return False
         else:
-            logging.debug("Got slice credentials")
+            logger.debug("Got slice credentials")
             self.slice = response["value"]
             return True
 
@@ -314,7 +310,7 @@ class emulabConnection:
         self.UpdateSliceInformation()
 
         if rspec is None:
-            logging.info("No specific rpsec given - using default rspec file")
+            logger.info("No specific rpsec given - using default rspec file")
 
             path = os.path.join(os.path.dirname(__file__), 'default.rspec')
             try:
@@ -322,11 +318,11 @@ class emulabConnection:
                 rspec = f.read()
                 f.close()
             except IOError:
-                logging.error("Reading of rspec failed. File may not exist?")
-                logging.error("File path: ",path)
+                logger.error("Reading of rspec failed. File may not exist?")
+                logger.error("File path: ",path)
                 return False
 
-        logging.info("Starting sliver creation")
+        logger.info("Starting sliver creation")
 
         params = {}
         params["credentials"] = (self.slice,)
@@ -336,15 +332,15 @@ class emulabConnection:
 
         rval, response = self.do_method_retry("cm", "CreateSliver", params)
         if rval:
-            logging.error("Could not create sliver")
+            logger.error("Could not create sliver")
             return False
         else:
-            logging.info("Sliver successfully created")
+            logger.info("Sliver successfully created")
             self.sliver, self.manifest = response["value"]
             #print("sliver:",self.sliver,"\n\n\n")
             #print("manifest:",self.manifest,"\n\n")
-            logging.info("Access nodes with: ssh -p 22 " + self.user + "@<node-name>." + self.experiment_name + ".emulab-net.emulab.net")
-            logging.info("This does only work for exclusive/hardware node, VMs have to be accessed using a specific port, see manifest")
+            logger.info("Access nodes with: ssh -p 22 " + self.user + "@<node-name>." + self.experiment_name + ".emulab-net.emulab.net")
+            logger.info("This does only work for exclusive/hardware node, VMs have to be accessed using a specific port, see manifest")
             return True
 
 
@@ -354,15 +350,15 @@ class emulabConnection:
         params["urn"] = self.sliceurn
         rval, response = self.do_method_retry("cm", "Resolve", params, version="2.0")
         if rval:
-            logging.error("Could not resolve slice")
+            logger.error("Could not resolve slice")
             return False
         else:
             if not "sliver_urn" in response["value"]:
-                logging.error("no sliver found in this slice")
+                logger.error("no sliver found in this slice")
                 return False
             else:
-                logging.debug("Sliver found" + str(response["value"]["sliver_urn"]))
-                #logging.debug("Manifest:" + str(response["value"]["manifest"]))
+                logger.debug("Sliver found" + str(response["value"]["sliver_urn"]))
+                #logger.debug("Manifest:" + str(response["value"]["manifest"]))
                 self.sliverurn = response["value"]["sliver_urn"]
                 self.manifest = response["value"]["manifest"]
                 return True
@@ -375,10 +371,10 @@ class emulabConnection:
 
         rval, response = self.do_method_retry("cm", "GetSliver", params, version="2.0")
         if rval:
-            logging.error("Could not get sliver credentials")
+            logger.error("Could not get sliver credentials")
             return False
         else:
-            logging.debug("Got sliver credentials")
+            logger.debug("Got sliver credentials")
             self.sliver = response["value"]
             return True
     
@@ -401,15 +397,37 @@ class emulabConnection:
 
         rval, response = self.do_method_retry("cm", "DeleteSliver", params, version="2.0")
         if rval:
-            logging.error("Deleting sliver failed")
+            logger.error("Deleting sliver failed")
             return False
         else:
-            logging.info("Ticket has been added for remaining time")
+            logger.info("Ticket has been added for remaining time")
             self.ticket = response["value"]
             return True
 
 
+    def restartSliver(self):
+        self.UpdateSliverInformation()
+
+        params = {}
+        params["slice_urn"] = self.sliceurn
+        params["credentials"] = (self.sliver,)
+
+        rval, response = self.do_method_retry("cm", "RestartSliver", params, version="2.0")
+        if rval:
+            logger.error("Could not restart")
+            return None
+        else:
+            return response["value"]
+
+
+
     def sliverStatus(self):
+        '''
+            Get current status of sliver 
+
+            Returns:
+                dictionary with keys: 'state', 'status' and 'details'
+        '''
         self.UpdateSliverInformation()
 
         params = {}
@@ -418,46 +436,73 @@ class emulabConnection:
 
         rval, response = self.do_method_retry("cm", "SliverStatus", params, version="2.0")
         if rval:
-            logging.error("Could not get sliver status")
+            logger.error("Could not get sliver status")
             return None
         else:
             return response["value"]
         
 
     def sliverWaitUntilReady(self, retries=50, interval=30):
+        '''
+            Wait until sliver is ready. Poll every 'interval' seconds
+            for up to 'retries' times
+
+            Args:
+                retries (int): number of retries
+                interval (int): number of seconds before next retry
+
+            Returns:
+                True if sliver is ready, false otherwise (timeout)
+        '''
         self.UpdateSliverInformation()
 
         ready = False
         count = 0
-        logging.info("Waiting for hardware to start up... (large network setups may take a few minutes to get started up)")
+        logger.info("Waiting for hardware to start up... (large network setups may take a few minutes to get started up)")
         while not ready or count >= retries:
             count += 1
             status = self.sliverStatus()
             if status is None:
-                logging.info("Sliver status unknown")
+                logger.info("Sliver status unknown")
             else:
-                #logging.debug(str(status))
-                logging.debug("Current status of sliver:" + status["status"])
+                logger.debug(f"Current status of sliver: {status['status']}")
+                try:
+                    for _,v in status["details"].items():
+                        logger.debug(f"id:{v['client_id']}, status:{v['status']}, state:{v['state']}, error:{v['error']}")
+                except:
+                    logger.info("did not work")
                 if status["status"] == 'ready':
                     ready = True
                     break
-            logging.info("Tried for " + str(count) + "/" + str(retries) + " times. Will try again in " + str(interval) + " seconds.")
+            logger.info(f"Tried for {count}/{retries} times. Will try again in {interval} seconds.")
             time.sleep(interval)
 
         return ready
 
         
     def startExperiment(self, duration=4, rspec=None):
-        # for testing only
-        #duration = 10 # TODO: Take this out later
+        '''
+            Start experiment hardware, needs to be called to
+            request and startup all emulab resources
+
+            Args:
+                duration (int): duration of experiment in hours
+                rspec (str | None): rpspec file of experiment
+                    If rspec is None, the default rpec file will
+                    be used (default.rspec).
+            
+            Returns:
+                True if experiment is up and running, False otherwise
+        '''
+
         ret = self.createSlice(duration)
         # check for expiration date, if it is smaller than duration extend it
         if ret == 0:
-            logging.info("Creation successful")
+            logger.info("Creation successful")
         elif ret == 1:
-            logging.info("Creation not successful")
+            logger.info("Creation not successful")
         elif ret == 2:
-            logging.info("Slice already exists, renew expiration date")
+            logger.info("Slice already exists, renew expiration date")
             self.UpdateSliceInformation()
             # get current slice expiration
             oldExpT = self.getSliceExpiration()
@@ -466,23 +511,28 @@ class emulabConnection:
             # check if old expiration time already exceeds new expiration time
             diff = time.mktime(newExpT) - time.mktime(oldExpT)
 
-            logging.debug("old expiration time: " + str(oldExpT))
-            logging.debug("new expiration time: " + str(newExpT))
-            logging.debug("difference between old and new expiration time: " + str(diff))
+            logger.debug("old expiration time: " + str(oldExpT))
+            logger.debug("new expiration time: " + str(newExpT))
+            logger.debug("difference between old and new expiration time: " + str(diff))
             if diff > 0:
-                logging.info("need to extend slice expiration time")
+                logger.info("need to extend slice expiration time")
                 worked = self.renewSlice(time.strftime("%Y-%m-%dT%H:%M:%SZ",newExpT))
-                if not worked: logging.error("error occured when extending slice expiration time")
+                if not worked: logger.error("error occured when extending slice expiration time")
             else:
-                logging.info("slice expiration time is longer than needed. Don't extend time")
+                logger.info("slice expiration time is longer than needed. Don't extend time")
             
         self.createSliver(rspec)
 
+        # Use this code as a failsave when hardware does not work properly
+        #if self.stopExperiment():
+        #    logger.info("All done")
+        #    sys.exit()
+
         if self.sliverWaitUntilReady():
-            logging.debug("Experiment is ready")
+            logger.debug("Experiment is ready")
             return True
         else:
-            logging.debug("Experiment is not ready, timeout maybe too low or there was an error when starting up")
+            logger.debug("Experiment is not ready, timeout maybe too low or there was an error when starting up")
             return False
 
 
@@ -491,17 +541,29 @@ class emulabConnection:
 
     # Actually not needed, since exclusive VMs get their own address and are accessible through port 22
     def getVMPorts(self):
+        '''
+            Get ports of all virtual machines in experiment. Unlike 'rawPC's
+            non-exclusive VMs can not be accessed through port 22 but get assigned
+            a different port which can be found in the manifest. (This is due to
+            possibility of multiple VMs running on the same physical pc)
+
+            As of now not very useful since no mapping between port and hostname is
+            offered by this method
+
+            Returns:
+                list of all VM ports (except port 22)
+        '''
         self.UpdateSliverInformation()
 
         if self.manifest is None:
-            logging.info("No sliver seems to exist")
+            logger.info("No sliver seems to exist")
             return None
         else:
-            logging.debug("Find all ports...")
-            #logging.info("in getAddresses() - Manifest:" + str(self.manifest)) 
+            logger.debug("Find all ports...")
+            #logger.info("in getAddresses() - Manifest:" + str(self.manifest)) 
             pattern = re.compile('port=\"[0-9]+\"')
             matches = pattern.findall(str(self.manifest))
-            logging.debug("All ports found:" + str(matches))
+            logger.debug("All ports found:" + str(matches))
 
             numberPattern = re.compile('[0-9]+')
             result = []
@@ -511,31 +573,31 @@ class emulabConnection:
                     continue
                 else:
                     result.append(num)
-            logging.debug("All VM ports:" + str(result))
+            logger.debug("All VM ports:" + str(result))
 
             
             if len(result) == 0:
-                logging.warn("No VM port found")
+                logger.warn("No VM port found")
             elif len(result) > 1:
-                logging.warn("Multiple VM ports found")
+                logger.warn("Multiple VM ports found")
             else:
-                logging.info("One VM port found:" + str(result[0]))
+                logger.info("One VM port found:" + str(result[0]))
             return result
     
 
     def getSliceExpiration(self):
         '''Returns struct_time object'''
         if self.slice is None:
-            logging.error("No slice information available")
+            logger.error("No slice information available")
         else:
             try:
                 pattern = re.compile("<expires>(.+)</expires>")
                 expT = (pattern.findall(self.slice))[0]
-                logging.info("Expiration time (GMT): " + expT)
+                logger.info("Expiration time (GMT): " + expT)
                 t = time.strptime(expT,"%Y-%m-%dT%H:%M:%SZ")
                 return t
             except Exception as e:
-                logging.error(str(e))
+                logger.error(str(e))
                 return None
 
 
@@ -569,78 +631,77 @@ class emulabConnection:
                 types.add(pctype)
         return types
 
-            
-
 
 if __name__ == "__main__":
-    logging.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
+    # Can be used for testing and debugging
+
+    logger.basicConfig(format='%(asctime)s:: %(levelname)s:: %(message)s',datefmt="%H:%M:%S", level=logging.INFO)
 
     try:
-        #emuConn = emulabConnection("cabart","/home/cabart",".ssl/encrypted.pem",".ssl/password")
         emuConn = emulabConnection("cabart", certificate_loc=".ssl/encrypted.pem",password_loc=".ssl/password")
     except InitializeError as e:
-        logging.error("Emulab initialization failed: " + str(e))
-        logging.error("Connection could not get established, abort...")
+        logger.error("Emulab initialization failed: " + str(e))
+        logger.error("Connection could not get established, abort...")
         sys.exit(1)
 
-    logging.info("Setting up has worked")
+    logger.info("Setting up has worked")
 
-    #logging.info("Test for server version")
+    #logger.info("Test for server version")
     #version = emuConn.getVersion()
-    #logging.info("Version number:" + str(version))
+    #logger.info("Version number:" + str(version))
 
-    #logging.info("Test for credentials")
+    #logger.info("Test for credentials")
     #cred = emuConn.get_self_credential() 
     #if cred is None:
-    #    logging.error("Could not get my credential")
+    #    logger.error("Could not get my credential")
     #else:
-    #    logging.info("Did get credentials")
+    #    logger.info("Did get credentials")
         #print(cred)
 
-    #logging.info("Test for slice creation")
+    #logger.info("Test for slice creation")
     #worked = emuConn.createSlice(duration=1)
     #if worked:
-    #    logging.info("Successfully created slice")
+    #    logger.info("Successfully created slice")
     #else:
-    #    logging.info("Could not create slice")
+    #    logger.info("Could not create slice")
 
-    #logging.info("Test for sliver creation")
+    #logger.info("Test for sliver creation")
     #worked = emuConn.createSliver()
     #if worked:
-    #    logging.info("Successfully created sliver")
+    #    logger.info("Successfully created sliver")
     #else:
-    #    logging.info("Could not create sliver")
+    #    logger.info("Could not create sliver")
 
     ready = emuConn.startExperiment()
     if ready:
-        logging.info("experiment is now ready")
+        logger.info("experiment is now ready")
     else:
-        logging.info("something went wrong")
+        logger.info("something went wrong")
 
-    time.sleep(5)
+    time.sleep(60)
     
     stopped = emuConn.stopExperiment()
     if stopped:
-        logging.info("experiment has been stopped")
+        logger.info("experiment has been stopped")
     else:
-        logging.info("something went wrong")
+        logger.info("something went wrong")
 
 
-    #logging.info("Wait for experiment to get ready")
+    #logger.info("Wait for experiment to get ready")
     
     #ready = emuConn.sliverWaitUntilReady()
     #if ready:
-    #    logging.info("experiment is now ready")
+    #    logger.info("experiment is now ready")
     #else:
-    #    logging.error("Sliver still not ready, maybe broken: abort")
+    #    logger.error("Sliver still not ready, maybe broken: abort")
 
     
 
     #time.sleep(60)
 
-    #logging.info("Test for sliver deletion")
+    #logger.info("Test for sliver deletion")
     #worked = emuConn.deleteSliver()
     #if worked:
-    #    logging.info("Successfully deleted sliver")
+    #    logger.info("Successfully deleted sliver")
     #else:
-    #    logging.info("Could not delete sliver")
+    #    logger.info("Could not delete sliver")

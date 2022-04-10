@@ -10,17 +10,38 @@ Click on any node in the topology and choose the `shell` menu item. When your sh
 import geni.portal as portal
 # Import the ProtoGENI library.
 import geni.rspec.pg as pg
+# Import Emulab library, only need for special extensions
+# See: https://docs.cloudlab.us/geni-lib/api/genirspec/index.html
 import geni.rspec.emulab as emulab
+
+import logging
+logger = logging.getLogger("root.create_rspec")
 
 # global parameters
 repoURL = "https://github.com/cabart/bt-cc-model-code/archive/main.tar.gz"
 repoPath = "/local"
 
 def createUnboundRspec(numSender, linkCapacity):
-    """ Returns unbound rspec file as string """
+    '''
+        Returns unbound rspec file as string
 
-    #linkCapacity *= 1000 # in kilobytes # TODO: seems not to be true
+        Args:
+            numSender: number of sender nodes
+            linkCapacity: capacity of link, will be ignored
+
+        Returns:
+            String of rspec 'file'
+    '''
+
+    # Always request 1Gb links since Emulab anyway uses the next bigger
+    # interface capacity and slows down the links using traffic controller
     linkCapacity = 1000000
+    logger.info(f"requested link capacity: {linkCapacity}kb")
+
+    # Use this if you really want the 'correct' capacity
+    # Be aware that you are not guaranteed to get this capacity,
+    # it might be bigger
+    # linkCapacity *= 1000 # in kilobytes
 
     # Create a portal context.
     pc = portal.Context()
@@ -30,8 +51,8 @@ def createUnboundRspec(numSender, linkCapacity):
     request = pg.Request()
 
     # physical type of all nodes
-    # TODO: add this to experiment parameter
-    
+    # Could choose which physical nodes are requested
+    # As of now left for the resource mapper to decide
     physList = [
         ('', 'let resource mapper choose'),
         ('d710', 'd710, <6Gb'),
@@ -43,12 +64,14 @@ def createUnboundRspec(numSender, linkCapacity):
 
     # Use Ubuntu 20.04
     img = 'urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU20-64-STD'
+    # image with ovs-switch pre-installed, beware of Ubuntu version 18 instead of 20
+    ovsImg = 'urn:publicid:IDN+emulab.net+image+emulab-ops:UBUNTU18OVS'
 
     # Add Switch to the request
     mysw = request.XenVM("switch")
-    mysw.exclusive = True # otherwise overall bandwith is limited, and port would not be 22
+    mysw.exclusive = True # otherwise overall bandwith is limited, and port for ssh connection would not be 22
     mysw.disk_image = img
-    mysw.installRootKeys(True,True)
+    mysw.installRootKeys(True,True) # TODO: remove as it does not work
 
     # TODO: Test this
     # give switch a public ip address, maybe not needed
@@ -74,7 +97,7 @@ def createUnboundRspec(numSender, linkCapacity):
         nodeName = "h" + str(i)
         node = request.RawPC(nodeName)
         node.disk_image = img
-        node.installRootKeys(True,True)
+        node.installRootKeys(True,True) # TODO: remove this as it doesn't work
         
         # set physical type of sender node
         if phystype != "":
@@ -89,12 +112,11 @@ def createUnboundRspec(numSender, linkCapacity):
         link = request.Link("sendLink-" + nodeName,members=[iface,sendiface])
         link.bandwidth = linkCapacity
         link.link_multiplexing = True
-        link.latency = 10
         
     # receiver node
     rcvNode = request.RawPC("hdest")
     rcvNode.disk_image = img
-    rcvNode.installRootKeys(True,True)
+    rcvNode.installRootKeys(True,True) # TODO: remove this as it doesn't work
     rcvNode.addService(pg.Install(url=repoURL, path=repoPath))
     startupReceiver = "/local/bt-cc-model-code-main/emulab_experiments/remote_scripts/node_startup.sh"
     rcvNode.addService(pg.Execute(shell="bash", command=startupReceiver))
@@ -108,7 +130,6 @@ def createUnboundRspec(numSender, linkCapacity):
     link = request.Link("rcvLink", members=[rcviface,iface])
     link.bandwidth = linkCapacity
     link.link_multiplexing = False
-    link.latency = 10
     
     # Print the RSpec to the enclosing page.
     return request.toXMLString(pretty_print=True, ucode=True)
