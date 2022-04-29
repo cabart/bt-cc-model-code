@@ -36,6 +36,13 @@ def get_config(config_name):
     with open(config_name, 'r') as config_file:
         config = yaml.safe_load(config_file)
 
+    # check if bbr2 is used
+    bbr2 = False
+    for combination in config['varying_parameters']['cc_combination']:
+        for protocol in combination:
+            if protocol == 'BBR2':
+                bbr2 = True
+
     fixed_parameters = config['common_parameters']
 
     if 'delete_raw_dump' in config['experiment_parameters'].keys():
@@ -61,7 +68,7 @@ def get_config(config_name):
         pc_counter += 1
         config['param_combinations'].append(pc_map)
 
-    return config
+    return config, bbr2
 
 
 # Go from behavior config dict to behavior summary string

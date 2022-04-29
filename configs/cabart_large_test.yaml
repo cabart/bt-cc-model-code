@@ -1,0 +1,118 @@
+name: c_large_test
+
+# --------------------------------------------------
+common_parameters:
+  send_duration:  20 #s
+  truncate_front: 10 #s
+  truncate_back:  0 #s
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [10]
+  link_capacity: [100] # Mbps
+  switch_buffer: [1,2,3,4,5] # expressed in BDP of link l
+  cc_combination:
+    - ['BBR']
+    - ['BBR','RENO']
+    - ['BBR','CUBIC']
+    - ['BBR2']
+    - ['BBR2','RENO']
+    - ['BBR2','CUBIC']
+  link_latency: [10] # In ms
+  source_latency_range: 
+    - [10.0, 10.0]
+  qdisc:
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: True
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/simon/prog/pox, /home/simonsch/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 2
+
+# --------------------------------------------------
+
+emulab_parameters:
+  base_config: emulab_experiments/base_config.yaml
+
+# --------------------------------------------------
+plots:
+
+  large_test_queue_cc_combination_droptail:
+    model_results: False
+    experiment_results: True
+    legend: False
+    x: switch_buffer
+    y: avg_queue
+    z: cc_combination
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      source_latency_range: [10.0, 10.0]
+
+  large_test_jiter_cc_combination_droptail:
+    model_results: False
+    experiment_results: True
+    legend: False
+    x: switch_buffer
+    y: avg_jitter
+    z: cc_combination
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      source_latency_range: [10.0, 10.0]
+
+  large_test_fairness_cc_combination_droptail:
+    model_results: False
+    experiment_results: True
+    legend: False
+    x: switch_buffer
+    y: jain_fairness_index
+    z: cc_combination
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      source_latency_range: [10.0, 10.0]
+
+  large_test_utilization_cc_combination_droptail:
+    model_results: False
+    experiment_results: True
+    legend: True
+    x: switch_buffer
+    y: utilization
+    z: cc_combination
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      source_latency_range: [10.0, 10.0]
+
+  large_test_loss_cc_combination_droptail:
+    model_results: False
+    experiment_results: True
+    legend: False
+    x: switch_buffer
+    y: loss
+    z: cc_combination
+    other:
+      senders: 10
+      qdisc: Drop-tail
+      source_latency_range: [10.0, 10.0]

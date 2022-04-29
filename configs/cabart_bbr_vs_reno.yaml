@@ -1,0 +1,93 @@
+name: c_bbr_vs_reno
+
+# --------------------------------------------------
+common_parameters:
+  send_duration:  20 #s
+  truncate_front: 10 #s
+  truncate_back:  0 #s
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [2, 10]
+  link_capacity: [100,1000] # Mbps
+  switch_buffer: [0.5, 1.0, 2.0] # expressed in BDP of link l
+  cc_combination:
+    - ['BBR','RENO']
+  link_latency: [2.5] # In ms
+  source_latency_range: 
+    - [0, 5.0]
+  qdisc:
+    - RED
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: True
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/simon/prog/pox, /home/simonsch/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 1
+
+# --------------------------------------------------
+
+emulab_parameters:
+  base_config: emulab_experiments/base_config.yaml
+
+# --------------------------------------------------
+plots:
+
+  B_fairness_cc_combination_droptail:
+    model_results: False
+    experiment_results: True
+    legend: False
+    x: switch_buffer
+    y: jain_fairness_index
+    z: cc_combination
+    other:
+      senders: 10
+      #link_latency: 2.5
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]
+
+  B_fairness_cc_combination_red:
+    model_results: False
+    experiment_results: True
+    legend: False
+    x: switch_buffer
+    y: jain_fairness_index
+    z: cc_combination
+    other:
+      senders: 10
+      #link_latency: 2.5
+      qdisc: RED
+      source_latency_range: [0, 5.0]
+
+  B_loss_cc_combination_droptail:
+    model_results: False
+    experiment_results: True
+    legend: False
+    x: utilization
+    y: loss
+    z: cc_combination
+    other:
+      senders: 10
+      #link_latency: 7.5
+      qdisc: Drop-tail
+      source_latency_range: [0, 5.0]

@@ -91,6 +91,11 @@ def udp_oscillation_command(currPath, IPNum, desthostID):
 def run(behavior_index, desthostID, config):
     global INTERFACE
     INTERFACE = getInterface()
+
+    if behavior_index > config["senders"]:
+        logging.info("This host will not be used for this run")
+        sys.exit()
+
     behavior_index -= 1 # starting from zero index for lists
 
     print(config['sending_behavior'][behavior_index].keys())

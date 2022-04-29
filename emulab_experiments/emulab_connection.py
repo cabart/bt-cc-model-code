@@ -128,11 +128,8 @@ class emulabConnection:
         ctx.set_ciphers("DEFAULT:@SECLEVEL=1")
         ctx.load_cert_chain(self.certificate_loc,password=self.password)
         
-        # TODO: look into this in more detail
-        # maybe should remove them if possible
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
-        # alternative: cacertificates
 
         server = httplib.HTTPSConnection(url.hostname, port, context=ctx)
 
@@ -258,7 +255,7 @@ class emulabConnection:
             logger.error("Could not create slice:")
             logger.error(str(rval))
             logger.error(str(response))
-            return 1 # or maybe raise exception
+            return 1
         else:
             self.slice = response["value"]
             logger.info("Slice successfully created")
@@ -337,8 +334,6 @@ class emulabConnection:
         else:
             logger.info("Sliver successfully created")
             self.sliver, self.manifest = response["value"]
-            #print("sliver:",self.sliver,"\n\n\n")
-            #print("manifest:",self.manifest,"\n\n")
             logger.info("Access nodes with: ssh -p 22 " + self.user + "@<node-name>." + self.experiment_name + ".emulab-net.emulab.net")
             logger.info("This does only work for exclusive/hardware node, VMs have to be accessed using a specific port, see manifest")
             return True

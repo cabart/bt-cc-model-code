@@ -17,7 +17,6 @@ import argparse
 import random
 from pexpect import pxssh
 import subprocess
-import asyncio
 
 from create_rspec import *
 from generate_config import *
@@ -243,8 +242,9 @@ def addBBR(allSender):
     logging.info(f"Supported CCAs on sender nodes: {matches}")
 
 
-def addBBR2(sshConnections:ExperimentConnections):
+def addBBR2(sshConnections:ExperimentConnections, emuServer:emulabConnection):
     '''
+        Warning: Does not work consistently and may break experiment!
         Enable BBR2 on all sender nodes. Sender nodes are getting rebooted to complete
         installation. Liquorix kernel is being installed on all sender nodes.
         Wait for all ssh connections to reconnect, signaling a succuessful reboot before advancing.
@@ -262,25 +262,33 @@ def addBBR2(sshConnections:ExperimentConnections):
         message = v.before.decode("utf-8")
         logging.info(f"{k}: {message}")
 
+    time.sleep(60)
     # Reboot all sender nodes
     for k,v in sshConnections.getSender().items():
         logging.info(f"Restart {k}")
-        v.sendline('sudo reboot')
+        v.sendline('sudo reboot\n')
 
     # Wait for all senders to restart...
     logging.info("Wait until all sender pcs rebooted")
 
-    time.sleep(10) # Wait to ensure reboot process is not aborted (very unlikely)
+    time.sleep(30) # Wait to ensure reboot process is not aborted (very unlikely)
     sshConnections.logout()
 
     # Wait for host pcs to restart
     time.sleep(30)
     logging.info("Ignore all warnings that follow")
     logging.info("If reconnecting fails for more than a minute, something has likely gone wrong.")
+    counter = 0
     while not sshConnections.connect():
+        counter += 1
         logger.info("Reconnecting failed! Try again in 30 seconds")
         sshConnections.logout()
         time.sleep(30)
+        if counter == 5:
+            logging.error("Restart takes too long, abort experiment...")
+            if emuServer.stopExperiment():
+                logging.info("Stopped experiment hardware")
+                sys.exit(1)
     logger.info("Reconnected to all host PCs!")
 
     logging.info("Check if BBR2 was installed successfully...")
@@ -345,7 +353,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
     '''
     logging.debug("Setting up configuration")
 
-    config = get_config(config_name)
+    config, bbr2 = get_config(config_name)
 
     result_folder = 'results/'
     if not os.path.exists(result_folder):
@@ -413,7 +421,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
     rspec = createUnboundRspec(maxSender, maxCapacity)
 
     # start experiment hardware and wait until ready
-    if emuServer.startExperiment(duration=4, rspec=rspec):
+    if emuServer.startExperiment(duration=8, rspec=rspec):
         logging.info("Experiment is ready\n")
     else:
         logging.info("Experiment is not ready, timeout maybe too low or there was an error when starting up")
@@ -450,9 +458,9 @@ def main(config_name, download, yesFlag, noexperimentFlag):
     # Add BBR support for all sender nodes
     addBBR(sshConnections.getSender())
 
-    # Add BBR2 support for all sender nodes
-    # TODO: only do this when BBR2 is used in experiment
-    addBBR2(sshConnections)
+    # Add BBR2 support for all sender nodes if used in a experiment configuration
+    if bbr2 and (not noexperimentFlag):
+        addBBR2(sshConnections, emuServer)
 
     # Get information about hardware
     types = emuServer.getPCTypes()
@@ -461,7 +469,7 @@ def main(config_name, download, yesFlag, noexperimentFlag):
     # test unlimited bandwidth with one host
     logging.info("test theoretical bandwidth of connection...")
     sshConnections.getReceiver().sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/receiver_test_bandwidth.py')
-    time.sleep(2) # TODO: test if this avoids error which occurs sometimes
+    time.sleep(2)
     someSender = list(sshConnections.getSender().items())[0][1]
     someSender.sendline('sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/sender_test_bandwidth.py')
     sshConnections.getReceiver().prompt()
@@ -559,19 +567,18 @@ def main(config_name, download, yesFlag, noexperimentFlag):
                 setupInterfaces(False,sshConnections)
 
                 # create condensed tcpdump files on remote nodes
-                # TODO: Do this in parallel
+                # TODO: Could be done in parallel
                 logging.info("start creating condensed tcpdump files")
                 for k,v in sshConnections.getAll().items():
                     if k == "switch": continue
                     v.sendline("sudo python /local/bt-cc-model-code-main/emulab_experiments/remote_scripts/remote_logparser.py")
+                    # This timeout is being ignored!
                     v.prompt(timeout=240) # add timeout since remote_logparser might take some time to complete
                     logging.info("created condensed tcpdump file on " + k)
                 
-                #for k,v in allSSH.items():
-                #    if k == "switch": continue
-                #    v.prompt()
                 logging.info("finished all condensed remote tcpdump files")
-                time.sleep(30)
+                # This timer should be increased for larger measurements
+                time.sleep(60)
 
                 # download condensed folder files and queue measurements
                 if download:

@@ -1,0 +1,66 @@
+name: c_reno_large
+
+# --------------------------------------------------
+common_parameters:
+  send_duration:  20 #s
+  truncate_front: 10 #s
+  truncate_back:  0 #s
+
+# --------------------------------------------------
+varying_parameters:
+  senders: [10]
+  link_capacity: [100] # Mbps
+  switch_buffer: [0.5] # expressed in BDP of link l
+  cc_combination:
+    - ['RENO']
+  link_latency: [10] # In ms
+  source_latency_range: 
+    - [10.0, 10.0]
+  qdisc:
+    - Drop-tail
+
+# -------------------------------------------------
+model_parameters:
+  computation_parameters:
+    stp: 0.01 #ms
+  trace_parameters:
+    plot_trace: True
+    background_parameters:
+      - senders
+      - link_capacity
+      - link_latency
+      - switch_buffer
+      - cc_combination
+      - source_latency_range
+    foreground_parameters:
+      - qdisc
+    rate_not_cwnd: True
+  analysis_parameters:
+    analyze: True
+
+# --------------------------------------------------
+experiment_parameters:
+  pox_directory: [/home/simon/prog/pox, /home/simonsch/pox/]
+  base_config: mininet_experiments/base_config.yaml
+  runs: 3
+
+# --------------------------------------------------
+
+emulab_parameters:
+  base_config: emulab_experiments/base_config.yaml
+
+# --------------------------------------------------
+plots:
+
+  B_fairness_cc_combination_droptail:
+    model_results: False
+    experiment_results: True
+    legend: False
+    x: latency
+    y: senders
+    z: cc_combination
+    other:
+      senders: 10
+      #link_latency: 2.5
+      qdisc: Drop-tail
+      source_latency_range: [10.0, 10.0]
