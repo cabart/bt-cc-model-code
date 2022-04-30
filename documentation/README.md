@@ -6,4 +6,3 @@ Includes documentation for varying code segments and setups.
 - simon_code, setup and properties of simon's mininet experiments code
 - ovs_network, setup of network with virtual switch
 - mininet_setup, setup of mininet VM used for cc-de-models mininet experiments
- 

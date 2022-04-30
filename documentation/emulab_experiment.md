@@ -115,7 +115,7 @@ Get the interface name for sending data into the experiment network
 ip route show 10.0.0.0/24 | grep -o "dev \S* " | grep -o " \S*"
 ~~~
 
-Ideally when doing this in python, do the _ip_ command with popen and do the grep part with regular expressions (re)
+Ideally when doing this in python, do the *ip* command with popen and do the grep part with regular expressions (re)
 
 ~~~python
 output = subprocess.check_output(["ip","route","show","10.0.0.0/24"]).decode("utf-8")
