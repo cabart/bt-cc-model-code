@@ -1,16 +1,18 @@
 # OpenVSwitch Setup
 
+This section explains how to setup a virtual switch using Open vSwitch software.
+
 ## Goal
 
-Have a network of x senders, 1 OVS node and 1 receiver
+Have a network of x senders, 1 OvS node and 1 receiver
 
 1. Create network topology
-2. Setup OVS node
+2. Setup OvS node
 3. Test network structure
 
 ## setup using VMs only
 
-profile: VswitchNnodes
+(Emulab) profile: VswitchNnodes
 Network of n sender nodes, one receiver node and one node in between as switch (all VMs).
 
 ## OVS Setup
@@ -59,8 +61,3 @@ To check if network setup is correct: Install nmap and do port search
         ~~~bash
         nmap -sP 192.168.1.1/24
         ~~~
-
----
-
-~~To test the network performance using iperf use the script in local/automation-tests/runExpssh.sh.
-This runs iperf on all sender nodes (more or less simultaneously).~~

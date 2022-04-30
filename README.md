@@ -25,14 +25,16 @@ Afterwards run:
 
 to finish the setup.
 
-TODO: Test script if setup is working.
-
 ### Notes about setup
 
-- Uses a python virtual environment located in 'env/'
+- Uses a Python virtual environment located in 'env/'
 - Uses geni-lib package located in 'geni-lib/'. This is a submodule and is directly cloned from [geni-lib](https://gitlab.flux.utah.edu/emulab/geni-lib.git)
 
-The geni-lib package was installed in environment using the following command: '$> env/bin/python -m pip install -e ./geni-lib/'
+The geni-lib package was installed in environment using the following command:
+
+~~~bash
+env/bin/python -m pip install -e ./geni-lib/'
+~~~
 
 ## Documentation
 
@@ -46,22 +48,36 @@ See [Emulab experiment documentation](documentation/emulab_experiment.md#prerequ
 ./run.sh
 ~~~
 
+Run specific configuration:
+
+~~~bash
+./run.sh -c ./configs/<specific_config>.yaml
+~~~
+
 Get more information about experiment options:
 
 ~~~bash
 ./run.sh -h
 ~~~
 
-## Additional notes about the repository
+## Create plots
 
-If python files are run by themselves they should be called like:
+Run the following:
 
 ~~~bash
-./env/bin/python \<python file\>
+sudo ./env/bin/python3 plot.py ./configs/<specific_config>.yaml
+~~~
+
+## Additional notes about the repository
+
+If Python files are run by themselves they should be called like:
+
+~~~bash
+./env/bin/python <python file>
 ~~~
 
 or depending on the file:
 
 ~~~bash
-sudo ./env/bin/python \<python file\>
+sudo ./env/bin/python <python file>
 ~~~

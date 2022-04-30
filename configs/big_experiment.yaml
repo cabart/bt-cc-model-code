@@ -9,8 +9,9 @@ common_parameters:
 # --------------------------------------------------
 varying_parameters:
   senders: [2, 6, 10]
-  link_capacity: [1000] # Mbps
-  switch_buffer: [0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0] # expressed in BDP of link l
+  link_capacity: [100] # Mbps
+  #switch_buffer: [0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0] # expressed in BDP of link l
+  switch_buffer: [0.5, 1.0, 2.0, 5.0]
   cc_combination:
     - ['BBR']
     - ['RENO', 'BBR']

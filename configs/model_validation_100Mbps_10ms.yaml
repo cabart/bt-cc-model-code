@@ -55,6 +55,11 @@ experiment_parameters:
   runs: 3
 
 # --------------------------------------------------
+
+emulab_parameters:
+  base_config: emulab_experiments/base_config.yaml
+
+# --------------------------------------------------
 plots:
 
   B_queueing_cc_combination_droptail:

@@ -2,9 +2,9 @@ name: test_config
 
 # --------------------------------------------------
 common_parameters:
-  send_duration: 11 #s
-  truncate_front: 5 #s
-  truncate_back: 2 #s
+  send_duration: 22 #s
+  truncate_front: 0 #s
+  truncate_back: 0 #s
 
 # --------------------------------------------------
 varying_parameters:
@@ -12,10 +12,10 @@ varying_parameters:
   link_capacity: [100] # Mbps
   switch_buffer: [0.5] # expressed in BDP of link l
   cc_combination:
-    - ['RENO']
-  link_latency: [1] # In ms
+    - ['BBR2']
+  link_latency: [10] # In ms
   source_latency_range: 
-    - [1.375, 1.375]
+    - [10, 10]
   qdisc:
     - Drop-tail
 
@@ -48,7 +48,6 @@ experiment_parameters:
 
 emulab_parameters:
   base_config: emulab_experiments/base_config.yaml
-  username: cabart # deprected, to be removed
 
 # --------------------------------------------------
 plots:

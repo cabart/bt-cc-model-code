@@ -1,10 +1,12 @@
 # mininet setup
 
+This is a minimalistic guide to install a VM which runs mininet and how to access the VM from outside. It was only used to test mininet code.
+
 ## Setup VM
 
 Use VM (e.g. in virtualbox): [mininet VM download](http://mininet.org/download/)
-(Native installation does not work in WSL since not all queing disciplines are supported, and can not easily be added).
-Download Ubuntu 20.04 version for bbr2 support.
+(Native installation does not work in WSL (Windows-Subsystem for Linux) since not all queing disciplines are supported, and can not easily be added).
+Download Ubuntu 20.04 version for BBR support.
 
 ### Setup port-forwarding for ssh access to VM
 

@@ -1,9 +1,10 @@
 # cc-de-models
 
-1. Setup VM as described in mininetSetup.md.
+Additional notes on how to run simon's mininet experiments code.
+
+1. Setup VM as described in *mininetSetup.md*
 2. Install all dependencies (either as root or using python venv since experiments must be run as root)
     - matplotlib, pandas, colour, pyroute2
-    - TODO: write requirements file
 3. Install all required system packages (apt-get):
     ~~- texlive-latex-recommended~~
     - texlive-latex-extra
@@ -11,7 +12,7 @@
     - dvipng
 
 Install as root:
-(Beware of the fact that python behaves different when run as sudo, may not find modules. If so use a python environment or install these modules globally)
+(Beware of the fact that Python behaves different when run as sudo, may not find modules. If so, use a Python environment or install these modules globally)
 
 > sudo python -m pip install \<library>
 >

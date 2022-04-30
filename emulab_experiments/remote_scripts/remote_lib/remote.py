@@ -63,14 +63,6 @@ def getConfig():
     except:
         raise Exception("No config file available")
 
-# TODO: to be implemented
-def getIface():
-    '''
-        Get network interface name connected to experiment network, only use this function
-        for sender and receiver node. Will return 'unknown' at switch 
-    '''
-    return "iface"
-
 def getName():
     '''
         Get hostname of host. e.g. h2, switch or hdest
@@ -164,18 +156,6 @@ def getLogger(logger_name:str):
 
     return logger
 
-
-def getSenderIface(sender_name):
-    '''
-    To be implemented
-    '''
-    return
-
-def getSenderIfaceAtSwitch(sender_name):
-    '''
-    To be implemented
-    '''
-    return
 
 if __name__ == "__main__":
     # for testing purposes

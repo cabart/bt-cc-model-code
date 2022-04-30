@@ -46,6 +46,11 @@ experiment_parameters:
   runs: 1
 
 # --------------------------------------------------
+
+emulab_parameters:
+  base_config: emulab_experiments/base_config.yaml
+
+# --------------------------------------------------
 plots: []
 
 

@@ -23,20 +23,20 @@ sudo ./setup_environment.sh
 
 Geni-lib library should work out of the box if it was installed as described in [README](../README.md).
 
-- Geni-lib library (directly from github, will be included in my repository) (since there seems to be no consistency in geni-libs documentation and versioning I prefer having a static version of it for every user)
+- Geni-lib library (directly from GitHub, will be included in my repository) (since there seems to be no consistency in geni-libs documentation and versioning I prefer having a static version of it for every user)
 
-- python libraries (see [libraries](../requirements/requirements.txt))
+- Python libraries (see [libraries](../requirements/requirements.txt))
 
-- system packages (apt packages)
+- System packages (apt packages)
   - texlive-latex-extra
   - cm-super
   - dvipng
 
 ## Pipeline of ./run.sh (and ./run_emulab_experiments.py)
 
-1. run main script (./run_emulab_experiments.py) with some config
+1. Run main script (./run_emulab_experiments.py) with some config
 2. Allocate resources on Emulab and startup hardware
-    - Uses the emulabConnection file/class for handling resources and experiment status/setup/shutdown which in turn communicates with the emulab server using xmlrpc
+    - Uses the emulabConnection file/class for handling resources and experiment status/setup/shutdown, which in turn communicates with the emulab server using xmlrpc
 3. Wait for hardware setup to complete
     - Setting up of virtual switch on a virtual machine might take up to ~10min
 4. Start experiment, using ssh connections to all remote hardware resources
@@ -46,14 +46,6 @@ Geni-lib library should work out of the box if it was installed as described in 
 5. Get data from experiment using scp
     - save all data in results/\<config-name\>/emulab_experiments/...
 6. Shutdown hardware (or repeat for multiple experiments)
-
-Program code:
-
-1. Generate config for all experiments and all possible parameter configurations
-2. Create emulab topology for all experiments -> limitations are stricter than for minilab experiments
-    - different number of senders is critical
-    - link capacity has to be set to maximum
-    - set link latency at start of individual experiment (same for multiple runs of same configuration)
 
 ## Folder Structures
 
@@ -79,11 +71,11 @@ Program code:
   - includes all relevant scripts to run emulab experiments
   - remote_scripts, includes all scripts running on any remote computer (sender, switch, receiver)
 - env
-  - python environment for experiment
+  - Python environment for experiment
 - geni-lib
-  - geni-lib library for generating rspec files (is a github repository itself)
+  - geni-lib library for generating rspec files (is a GitHub repository itself)
 - requirements
-  - all python requirements
+  - all Python requirements
 - results
   - where all experiment results are saved (if default config is not changed)
   - does not exist if no experiment has been run yet
@@ -102,9 +94,10 @@ Program code:
 ~~~
 
 - condensed
-  - compressed versions of tcpdump files (one from every sender and receiver, plus one consisting of all data summarized in one file *tcpd_dataframe.csv*)
+  - Compressed versions of tcpdump files (one from every sender and receiver, plus one consisting of all data summarized in one file *tcpd_dataframe.csv*)
+  - Will be empty after experiment. Intermediate results take up too much disk space otherwise.
 - hostdata
-  - uncompressed tcpdump data (only available on remote nodes). These files are being compressed and minimized on remote nodes and sent to condensed folder of local experiment pc.
+  - Uncompressed tcpdump data (only available on remote nodes). These files are being compressed and minimized on remote nodes and sent to condensed folder of local experiment pc.
 - hostlogs
   - All logging data from remote nodes. If there are errors on remote nodes they will be reported in this files. Also hold congestion window data from all nodes.
 - queue
@@ -114,7 +107,7 @@ Program code:
 
 Get the interface name on any node by using the information from */var/emulab/boot/ifmap* on any remote node.
 
-**Information below is a bit out of date:**
+**Information below is a bit out of date but would work too:**
 
 Get the interface name for sending data into the experiment network
 
@@ -131,57 +124,28 @@ result = pattern.findall(output)[0].split()[1]
 print(result)
 ~~~
 
-## Parameters
-
-### Per experiment
-
-- send duration
-- number of sender
-- capacity of switch/receiver link (use same capacity on senderX/switch link to ensure bottleneck link is the switch/receiver link)
-- qdisc (queuing discipline)
-
-### Per sender
-
-- latency
-- congestion control algorithm
-- tso
-
-- mss
-- cbr_as_pss
-- cbr_rate
-
-## Questions
-
-- Which part of base_config is static?
-
 ## Notes about server connection
 
 Server Connection over emulab:
 
 ~~~bash
-hrn:  utahemulab.\<project-name>.\<experiment-name>
+hrn:  utahemulab.<project-name>.<experiment-name>
 
-urn:  urn:publicid:IDN+emulab.net:\<project-name>+slice+\<experiment-name>
+urn:  urn:publicid:IDN+emulab.net:<project-name>+slice+<experiment-name>
 
-ssh -p 22 \<user_name>@\<node-name>.\<experiment_name>.\<project_name>.emulab.net
+ssh -p 22 <user_name>@<node-name>.<experiment_name>.<project_name>.emulab.net
 ~~~
 
 Server Connection using protogeni:
 
 ~~~bash
-hrn:  utahemulab.\<slice-name>
+hrn:  utahemulab.<slice-name>
 
-urn:  urn:publicid:IDN+emulab.net+slice+\<slice-name>
+urn:  urn:publicid:IDN+emulab.net+slice+<slice-name>
 
-ssh -p 22 \<user_name>@\<node-name>.\<sliver_name>.emulab-net.emulab.net
+ssh -p 22 <user_name>@<node-name>.<sliver_name>.emulab-net.emulab.net
 ~~~
 
 For virtual machines: Use a specific port (given at runtime)
 
 *Exclusive virtual machines* can be viewed as regular nodes and communicated to using port 22!
-
-~~Should try using the base-urn 'urn:publicid:IDN+emulab.net:\<project-name>' to test if easier ssh naming is enabled ('cabart@node.\<project-name>.\<experiment-name>.emulab.net)~~
-
-## Problems
-
-- Certificates extension 'oid' does not work with newer versions of python cryptography library, should investigate more and maybe ask emulab about it

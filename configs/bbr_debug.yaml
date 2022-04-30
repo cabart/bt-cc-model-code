@@ -50,6 +50,11 @@ experiment_parameters:
   delete_raw_dump: true
 
 # --------------------------------------------------
+
+emulab_parameters:
+  base_config: emulab_experiments/base_config.yaml
+
+# --------------------------------------------------
 plots: []
 
 trace_plots:
